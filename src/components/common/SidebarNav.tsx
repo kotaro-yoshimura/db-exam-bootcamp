@@ -20,7 +20,8 @@ const SIDEBAR_ITEMS: Array<{ id: ModuleId; label: string }> = [
   { id: 'sql', label: 'SQL道場' },
   { id: 'cbt', label: 'CBT演習' },
   { id: 'review', label: '弱点復習' },
-  { id: 'roadmap', label: '行程・200語' },
+  { id: 'roadmap', label: '行程カレンダー' },
+  { id: 'cards', label: '重要語句200' },
 ];
 
 export const SidebarNav: React.FC<Props> = ({

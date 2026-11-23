@@ -31,7 +31,7 @@ flowchart TD
         M3["モジュール3: CBT本番トレーナー\n(CbtTrainer / FreehandOverlayCanvas / SignalDrill)"]
         M4["モジュール4: 弱点復習キュー\n(ReviewQueueView)"]
         M5["モジュール5: 18週間行程 & 200語\n(RoadmapTracker / FlashcardDeck)"]
-        COMMON["共通シェル\n(HeaderBar / BottomNav / SyncModal)"]
+        COMMON["共通シェル\n(SidebarNav / HeaderBar / BottomNav / SyncModal / HelpModal)"]
     end
 
     subgraph STATE["状態管理・永続化層"]
@@ -70,7 +70,8 @@ flowchart TD
   - [vite.config.ts](file:///Users/kotaro_yoshimura/db-exam-bootcamp/vite.config.ts)：単一HTML化とiPadOS向けクラシック `<script>` 変換プラグイン
   - [index.html](file:///Users/kotaro_yoshimura/db-exam-bootcamp/index.html)：`data:` URL 起動時の `MessageChannel` ガードと QuickLook フォールバック案内
   - [main.tsx](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/main.tsx)：React 19 `createRoot`（`onUncaughtError` / `AppErrorBoundary` 搭載）
-  - [App.tsx](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/App.tsx)：5大モジュール切替、下部余白 `pb-36` 確保
+  - [App.tsx](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/App.tsx)：Apple HIG 準拠シェル（iPad/Mac は左固定サイドバー `210px`、iPhone は 48px ヘッダー＋すりガラス下部タブバー、`pb-24 md:pb-8`）
+  - [SidebarNav.tsx](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/components/common/SidebarNav.tsx) / [HeaderBar.tsx](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/components/common/HeaderBar.tsx) / [BottomNav.tsx](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/components/common/BottomNav.tsx) / [HelpModal.tsx](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/components/common/HelpModal.tsx)：画面幅（`md: 768px`）に応じた単一ナビゲーションと3タブ式使い方モーダル
 - **型定義・ユーティリティ・ストア**
   - [exam.ts](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/types/exam.ts)：アプリ全体のドメインモデル型定義
   - [canvasHelpers.ts](file:///Users/kotaro_yoshimura/db-exam-bootcamp/src/utils/canvasHelpers.ts)：DPRスケーリング・矢印・カーディナリティ・角丸矩形の描画ライブラリ
@@ -188,27 +189,27 @@ UIコンポーネントには問題文や数値のハードコードを持たせ
 
 # 第2部：使用・運用方法マニュアル（合格実践ガイド）
 
-## 1. 4つの利用モードと使い分け
+## 1. 端末別の操作スタイル ＆ 4つの利用モード
 
+### 画面幅に応じた自動最適化（Apple HIG 準拠）
+| 端末 | ナビゲーション | 2ペイン演習（SQL道場・CBT演習） | 得意な使い方 |
+|---|---|---|---|
+| **iPad / Mac（768px以上）** | 左固定サイドバー（210px）に全メニュー・同期・使い方を集約 | 左右2分割ペイン（問題文・図表 ⇔ エディタ・解答） | 机での30〜60分演習、Apple Pencil手書き、SQLショートカット実行 |
+| **iPhone（768px未満）** | 上部48px極薄ヘッダー ＋ 下部すりガラスタブバー（片手操作） | 上部スティッキー3セグメント切替（`問題・図表｜解答・エディタ｜解説`） | 通勤・スキマ時間の200語カード周回、弱点キュー消化、今週タスク確認 |
+
+### 4つの利用モード
 | 利用シーン | 起動方法 | SQLエンジン | `localStorage` 自動保存 |
 |---|---|---|---|
-| **① iPad / iPhone ホーム画面アプリ（PWA・おすすめ）** | `dist/` を無料HTTPS（Cloudflare Pages / Netlify / GitHub Pages等）へ配置 → Safariで1回開いて「共有 → ホーム画面に追加」 | **SQLite WASM 実機稼働（機内モードでもSWキャッシュで動作！）** | **永続保存される（アドレスバーなし全画面）** |
-| **② MacBook自宅学習（フル機能）** | ターミナルで `npm run dev` または `npm run preview` → ブラウザで開く | SQLite WASM 実機稼働 | 永続保存される |
-| **③ iPad自宅学習（同じWi-Fi）** | MacBookで `npx vite preview --host` → iPad Safariで `http://<MacのIP>:4173/` | SQLite WASM 実機稼働 | 永続保存される |
-| **④ iPad / iPhone 単一HTMLオフライン** | iCloud Drive の `dist/index.html` を **iOSショートカット（Base64 → Safari）** 等で起動 | オフライン評価＆キャッシュ自動稼働 | ※ショートカット(`data:` URL)はタブを閉じると消えるため、学習後に**3秒同期**を実行 |
+| **① iPad / iPhone ホーム画面アプリ（PWA・おすすめ）** | GitHub Pages（`main` push で自動公開）を Safari で開き「共有 → ホーム画面に追加」 | **SQLite WASM 実機稼働（機内モードでもSWキャッシュで動作）** | **永続保存（アドレスバーなし全画面）** |
+| **② MacBook自宅学習（フル機能）** | `npm run dev` または `npm run preview` でブラウザ起動 | SQLite WASM 実機稼働 | 永続保存 |
+| **③ 同一Wi-Fi 実機プレビュー** | `npx vite preview --host 0.0.0.0 --port 4173` → iPad/iPhone Safari でアクセス | SQLite WASM 実機稼働 | 永続保存 |
+| **④ 単一HTMLオフライン** | [dist/index.html](file:///Users/kotaro_yoshimura/db-exam-bootcamp/dist/index.html) を iOSショートカット（`data:` URL）で起動 | オフライン評価＆キャッシュ自動稼働 | ※タブを閉じると初期化されるため終了前に同期推奨 |
 
 > [!TIP]
-> **いちばん快適な「ホーム画面アプリ（PWA）」導入手順（約2分）**
-> 1. Macで `npm run build` を実行（[dist](file:///Users/kotaro_yoshimura/db-exam-bootcamp/dist) フォルダ一式が生成されます）
-> 2. 無料の静的HTTPSホスティングへ `dist` フォルダをアップロードします（Git不要でドラッグ＆ドロップするだけの **Cloudflare Pages（Direct Upload）** や **Netlify Drop**、または **GitHub Pages** が手軽です）
-> 3. iPhone / iPad の **Safari** で発行された `https://...` を1回開きます（裏側で Service Worker がアプリ本体と `sql-wasm.wasm` を自動キャッシュします）
-> 4. Safari の **共有ボタン（□に↑）→「ホーム画面に追加」** をタップします
-> 5. 以降はホーム画面の **DB** アイコンから、**アドレスバーなしの全画面・完全オフライン・履歴自動保存** で起動できます（更新時は右上の「データ同期」内または画面下の更新通知からワンタップ更新可能）。
-
-> [!WARNING]
-> **iPadショートカット（`data:` URL）運用時の超重要ルール**
-> Safariの仕様により `data:` URL のタブは閉じると `localStorage` が初期化されます。
-> **学習開始時**に「🔄 3秒同期」で前回の同期コードをペースト復元し、**学習終了時**に「Base64圧縮同期コードをワンタップコピー」してメモアプリやMacBookへ貼り付ける運用を習慣化すると、1件も履歴を失いません！
+> **いちばん快適な「ホーム画面アプリ（PWA）」導入手順（約1分）**
+> 1. `main` ブランチへ `git push` すると GitHub Actions が自動でビルドし GitHub Pages へ公開します。
+> 2. iPhone / iPad の **Safari** で公開 URL を開き、**共有（□に↑）→「ホーム画面に追加」** をタップします。
+> 3. 以降はホーム画面アイコンから全画面・完全オフラインで起動でき、更新時は画面下の **「更新する」**（または「同期」内の **「最新バージョンへ更新」**）からワンタップで最新版へ切り替えられます。
 
 ---
 

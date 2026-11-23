@@ -196,7 +196,8 @@ export function validateStudyState(raw: unknown): StudyState {
       obj.lastModule === 'sql' ||
       obj.lastModule === 'cbt' ||
       obj.lastModule === 'review' ||
-      obj.lastModule === 'roadmap'
+      obj.lastModule === 'roadmap' ||
+      obj.lastModule === 'cards'
         ? obj.lastModule
         : 'home',
   };

@@ -15,7 +15,7 @@ import { SimulatorLab } from './components/module1/SimulatorLab';
 import { SqlDojo } from './components/module2/SqlDojo';
 import { CbtTrainer } from './components/module3/CbtTrainer';
 import { ReviewQueueView } from './components/module4/ReviewQueueView';
-import { RoadmapFlashcardsView } from './components/module5/RoadmapFlashcardsView';
+import { RoadmapCalendarView, Flashcards200View } from './components/module5/RoadmapFlashcardsView';
 
 const LAST_PRACTICE_STORAGE_KEY = 'db_spec_last_practice_module_v1';
 
@@ -35,16 +35,12 @@ export const App: React.FC = () => {
   const [lastPracticeModule, setLastPracticeModule] = useState<'lab' | 'sql' | 'cbt'>(() =>
     loadLastPracticeModule()
   );
-  const [roadmapTab, setRoadmapTab] = useState<'roadmap' | 'cards'>('roadmap');
   const [syncOpen, setSyncOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>(() => getPwaStatus());
   const [dismissUpdateBanner, setDismissUpdateBanner] = useState(false);
 
-  const handleSelectModule = (id: ModuleId, options?: { roadmapSubTab?: 'roadmap' | 'cards' }) => {
-    if (options?.roadmapSubTab) {
-      setRoadmapTab(options.roadmapSubTab);
-    }
+  const handleSelectModule = (id: ModuleId) => {
     if (id === 'lab' || id === 'sql' || id === 'cbt') {
       setLastPracticeModule(id);
       try {
@@ -74,7 +70,7 @@ export const App: React.FC = () => {
       {/* iPad / Mac幅（md以上）：左固定サイドバーのみ */}
       <SidebarNav
         activeModule={activeModule}
-        onSelectModule={(id) => handleSelectModule(id)}
+        onSelectModule={handleSelectModule}
         onOpenSync={() => setSyncOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}
         daysLeft={daysLeft}
@@ -86,7 +82,7 @@ export const App: React.FC = () => {
       <div className="flex min-h-screen flex-col md:pl-[210px]">
         {/* iPhone幅（md未満）：極薄48pxコンパクトヘッダー */}
         <HeaderBar
-          onSelectModule={(id) => handleSelectModule(id)}
+          onSelectModule={handleSelectModule}
           onOpenSync={() => setSyncOpen(true)}
           onOpenHelp={() => setHelpOpen(true)}
           daysLeft={daysLeft}
@@ -108,13 +104,9 @@ export const App: React.FC = () => {
           {activeModule === 'cbt' && <CbtTrainer store={store} />}
           {activeModule === 'review' && <ReviewQueueView store={store} />}
           {activeModule === 'roadmap' && (
-            <RoadmapFlashcardsView
-              store={store}
-              activeSubTab={roadmapTab}
-              onChangeSubTab={setRoadmapTab}
-              onNavigateModule={(id) => handleSelectModule(id)}
-            />
+            <RoadmapCalendarView store={store} onNavigateModule={handleSelectModule} />
           )}
+          {activeModule === 'cards' && <Flashcards200View store={store} />}
         </main>
       </div>
 
@@ -146,7 +138,7 @@ export const App: React.FC = () => {
       {/* iPhone幅（md未満）：すりガラス下部タブバー */}
       <BottomNav
         activeModule={activeModule}
-        onSelectModule={(id) => handleSelectModule(id)}
+        onSelectModule={handleSelectModule}
         activeWeakCount={activeWeakCount}
       />
 
@@ -163,6 +155,7 @@ export const App: React.FC = () => {
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
         onOpenSync={() => setSyncOpen(true)}
+        onNavigateModule={handleSelectModule}
       />
     </div>
   );

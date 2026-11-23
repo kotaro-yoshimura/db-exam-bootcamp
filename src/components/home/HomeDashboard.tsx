@@ -14,7 +14,7 @@ interface Props {
   store: StudyStore;
   daysLeft: number;
   lastPracticeModule: 'lab' | 'sql' | 'cbt';
-  onNavigateModule: (id: ModuleId, options?: { roadmapSubTab?: 'roadmap' | 'cards' }) => void;
+  onNavigateModule: (id: ModuleId) => void;
 }
 
 const CAT_LABEL: Record<NonNullable<RoadmapTask['category']>, string> = {
@@ -30,7 +30,8 @@ const MODULE_ACTION_LABEL: Record<ModuleId, string> = {
   sql: 'SQL道場',
   cbt: 'CBT演習',
   review: '弱点復習',
-  roadmap: '200語',
+  roadmap: '行程',
+  cards: '200語',
 };
 
 const PRACTICE_INFO: Record<'lab' | 'sql' | 'cbt', { title: string; subtitle: string }> = {
@@ -84,12 +85,6 @@ export const HomeDashboard: React.FC<Props> = ({
 
   const handleTaskNavigate = (task: RoadmapTask) => {
     if (!task.targetModule) return;
-    if (task.targetModule === 'roadmap') {
-      const isCardTask =
-        task.label.includes('語') || task.label.includes('カード') || task.label.includes('フラッシュ');
-      onNavigateModule('roadmap', { roadmapSubTab: isCardTask ? 'cards' : 'roadmap' });
-      return;
-    }
     onNavigateModule(task.targetModule);
   };
 
@@ -106,7 +101,7 @@ export const HomeDashboard: React.FC<Props> = ({
 
         <button
           type="button"
-          onClick={() => onNavigateModule('roadmap', { roadmapSubTab: 'roadmap' })}
+          onClick={() => onNavigateModule('roadmap')}
           className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-slate-300 transition"
         >
           <span className="text-xs text-[#6E6E73]">進捗</span>
@@ -118,7 +113,7 @@ export const HomeDashboard: React.FC<Props> = ({
 
         <button
           type="button"
-          onClick={() => onNavigateModule('roadmap', { roadmapSubTab: 'cards' })}
+          onClick={() => onNavigateModule('cards')}
           className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-slate-300 transition"
         >
           <span className="text-xs text-[#6E6E73]">語句</span>
@@ -340,12 +335,12 @@ export const HomeDashboard: React.FC<Props> = ({
           {/* 200語フラッシュカード */}
           <button
             type="button"
-            onClick={() => onNavigateModule('roadmap', { roadmapSubTab: 'cards' })}
+            onClick={() => onNavigateModule('cards')}
             className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3.5 text-left hover:border-[#007AFF]/50 transition"
           >
             <div className="flex min-w-0 items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F5F5F7] text-[#007AFF]">
-                <ModuleNavIcon id="roadmap" className="h-5 w-5" />
+                <ModuleNavIcon id="cards" className="h-5 w-5" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -388,7 +383,7 @@ export const HomeDashboard: React.FC<Props> = ({
 
           <button
             type="button"
-            onClick={() => onNavigateModule('roadmap', { roadmapSubTab: 'roadmap' })}
+            onClick={() => onNavigateModule('roadmap')}
             className="shrink-0 text-xs font-semibold text-[#007AFF] hover:underline"
           >
             全5ヶ月を開く →

@@ -1,7 +1,7 @@
 // DB Specialist Bootcamp & Simulator 共通型定義
 
 /** メインモジュールID */
-export type ModuleId = 'home' | 'lab' | 'sql' | 'cbt' | 'review' | 'roadmap';
+export type ModuleId = 'home' | 'lab' | 'sql' | 'cbt' | 'review' | 'roadmap' | 'cards';
 
 /** 過去問の年度タグ */
 export type ExamYear = 'R7秋' | 'R6秋' | 'R5秋' | 'R3秋' | 'H31春' | 'H28春';

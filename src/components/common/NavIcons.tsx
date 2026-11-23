@@ -56,6 +56,14 @@ export const ReviewIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
   </svg>
 );
 
+export const CalendarIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
+  <svg {...baseProps} className={className}>
+    <rect fill="none" x="3.5" y="5" width="17" height="15.5" rx="2" />
+    <path fill="none" d="M8 3v3.5M16 3v3.5M3.5 9.5h17" />
+    <path fill="none" d="M8 13.5h2M14 13.5h2M8 17h2M14 17h2" />
+  </svg>
+);
+
 export const CardsIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
   <svg {...baseProps} className={className}>
     <rect fill="none" x="4" y="7" width="16" height="12.5" rx="2" />
@@ -108,6 +116,8 @@ export const ModuleNavIcon: React.FC<{ id: ModuleId; className?: string }> = ({
     case 'review':
       return <ReviewIcon className={className} />;
     case 'roadmap':
+      return <CalendarIcon className={className} />;
+    case 'cards':
       return <CardsIcon className={className} />;
   }
 };
