@@ -1,5 +1,6 @@
-// モジュール3：CBT本番スプリット画面トレーナー ＆ 3大CBT特化機能統合（白地・墨黒の試験本番調UI）
-import React, { useState, useEffect } from 'react';
+// モジュール3：CBT本番スプリット画面トレーナー ＆ 3大CBT特化機能統合（Apple HIG 準拠）
+// iPad/Mac(md以上): 左右2ペイン ／ iPhone(md未満): スティッキー3セグメント切替（問題・図表｜解答・エディタ｜解説）
+import React, { useState, useEffect, useRef } from 'react';
 import { CBT_PAST_EXAMS } from '../../data/pastExams';
 import type { KeyRole } from '../../types/exam';
 import type { StudyStore } from '../../state/useStudyStore';
@@ -12,6 +13,8 @@ interface Props {
   store: StudyStore;
 }
 
+type MobileCbtPane = 'problem' | 'editor' | 'explanation';
+
 const KEY_ROLE_CYCLE: KeyRole[] = ['none', 'pk', 'fk', 'pkfk'];
 const KEY_ROLE_LABEL: Record<KeyRole, string> = {
   none: '通常',
@@ -20,8 +23,8 @@ const KEY_ROLE_LABEL: Record<KeyRole, string> = {
   pkfk: '主兼外(二重線)',
 };
 const KEY_ROLE_CLASS: Record<KeyRole, string> = {
-  none: 'key-none text-[#18181b]',
-  pk: 'key-pk text-[#1d4ed8] font-bold',
+  none: 'key-none text-[#1D1D1F]',
+  pk: 'key-pk text-[#007AFF] font-bold',
   fk: 'key-fk text-[#15803d] font-semibold',
   pkfk: 'key-pkfk text-[#b45309] font-bold',
 };
@@ -32,6 +35,24 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
 
   const [splitRatio, setSplitRatio] = useState<'50-50' | '60-40' | '40-60'>('50-50');
   const [rightTab, setRightTab] = useState<'essay' | 'schema' | 'signal'>('essay');
+
+  // iPhone用3セグメント切替（スクロール位置をタブごとに記憶・復元）
+  const [mobilePane, setMobilePane] = useState<MobileCbtPane>('problem');
+  const paneScrollRef = useRef<Record<MobileCbtPane, number>>({
+    problem: 0,
+    editor: 0,
+    explanation: 0,
+  });
+
+  const handleSwitchMobilePane = (next: MobileCbtPane) => {
+    if (next === mobilePane) return;
+    paneScrollRef.current[mobilePane] = window.scrollY;
+    setMobilePane(next);
+    const savedY = paneScrollRef.current[next] ?? 0;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: savedY, behavior: 'auto' });
+    });
+  };
 
   const [remainingSec, setRemainingSec] = useState(exam.timeLimitMin * 60);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -57,6 +78,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
     setSchemaResult(null);
     setRevealedEssays({});
     setPreviewPrompt(null);
+    paneScrollRef.current = { problem: 0, editor: 0, explanation: 0 };
   }, [exam.id, exam.timeLimitMin, exam.schemaQuestion.schema.attributes]);
 
   useEffect(() => {
@@ -183,36 +205,36 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
 
   const leftColClass =
     splitRatio === '60-40'
-      ? 'lg:col-span-7'
+      ? 'md:col-span-7'
       : splitRatio === '40-60'
-        ? 'lg:col-span-5'
-        : 'lg:col-span-6';
+        ? 'md:col-span-5'
+        : 'md:col-span-6';
   const rightColClass =
     splitRatio === '60-40'
-      ? 'lg:col-span-5'
+      ? 'md:col-span-5'
       : splitRatio === '40-60'
-        ? 'lg:col-span-7'
-        : 'lg:col-span-6';
+        ? 'md:col-span-7'
+        : 'md:col-span-6';
+
+  const trueSignals = exam.signalDrill.segments.filter((s) => s.isSignal);
 
   return (
     <section className="space-y-4">
-      {/* ヘッダ＆CBTタイマー＆分割比率 */}
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#e4e4e0] pb-3">
-        <div>
-          <div className="font-mono text-[11px] uppercase tracking-wider text-[#71717a]">
-            03 / CBT SPLIT TRAINER
-          </div>
-          <h2 className="mt-0.5 text-xl font-bold tracking-tight text-[#18181b]">
-            CBT本番スプリット演習（R7秋–H28春）
+      {/* ヘッダ ＆ CBTタイマー ＆ 分割比率 */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-200 pb-3">
+        <div className="flex items-baseline gap-2.5">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
+            CBT演習
           </h2>
+          <span className="font-mono text-xs tabular-nums text-[#6E6E73]">R7秋–H28春</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-md border border-[#d4d4d0] bg-white px-3 py-1.5">
-            <span className="text-[11px] font-medium text-[#71717a]">残時間</span>
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+            <span className="text-[11px] font-medium text-[#6E6E73]">残時間</span>
             <span
-              className={`font-mono text-sm font-bold ${
-                remainingSec < 300 ? 'text-[#be123c]' : 'text-[#18181b]'
+              className={`font-mono text-sm font-bold tabular-nums ${
+                remainingSec < 300 ? 'text-red-600' : 'text-[#1D1D1F]'
               }`}
             >
               {formatTimer(remainingSec)}
@@ -220,7 +242,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             <button
               type="button"
               onClick={() => setTimerRunning((r) => !r)}
-              className="rounded bg-[#18181b] px-2 py-0.5 text-[11px] font-semibold text-white"
+              className="rounded-md bg-[#007AFF] px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-[#0066D6]"
             >
               {timerRunning ? '停止' : '開始'}
             </button>
@@ -230,20 +252,20 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                 setTimerRunning(false);
                 setRemainingSec(exam.timeLimitMin * 60);
               }}
-              className="rounded border border-[#d4d4d0] bg-[#f6f6f4] px-2 py-0.5 text-[11px] text-[#52525b]"
+              className="rounded-md border border-slate-200 bg-[#F5F5F7] px-2 py-0.5 text-[11px] text-[#6E6E73] hover:text-[#1D1D1F]"
             >
               リセット
             </button>
           </div>
 
-          <div className="hidden lg:inline-flex items-center rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5 text-[11px]">
+          <div className="hidden md:inline-flex items-center rounded-lg bg-[#E5E5EA]/80 p-0.5 text-[11px]">
             {(['50-50', '60-40', '40-60'] as const).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setSplitRatio(r)}
-                className={`rounded px-2 py-1 font-mono font-semibold ${
-                  splitRatio === r ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#71717a]'
+                className={`rounded-md px-2 py-1 font-mono font-semibold tabular-nums transition ${
+                  splitRatio === r ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
                 }`}
               >
                 {r}
@@ -260,52 +282,91 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             key={ex.id}
             type="button"
             onClick={() => setExamIdx(idx)}
-            className={`shrink-0 rounded-md border px-3 py-2 text-left transition ${
+            className={`shrink-0 rounded-lg border px-3 py-2 text-left transition ${
               idx === examIdx
-                ? 'border-[#18181b] bg-[#18181b] text-white'
-                : 'border-[#e4e4e0] bg-white text-[#18181b] hover:border-[#a1a1aa]'
+                ? 'border-[#007AFF] bg-[#007AFF] text-white'
+                : 'border-slate-200 bg-white text-[#1D1D1F] hover:border-slate-300'
             }`}
           >
             <div className="flex items-center gap-2">
               <span
-                className={`font-mono text-[11px] font-bold ${
-                  idx === examIdx ? 'text-[#e4e4e7]' : 'text-[#1d4ed8]'
+                className={`font-mono text-[11px] font-bold tabular-nums ${
+                  idx === examIdx ? 'text-white' : 'text-[#007AFF]'
                 }`}
               >
                 {ex.year}
               </span>
-              <span className={`text-[10px] ${idx === examIdx ? 'text-[#a1a1aa]' : 'text-[#71717a]'}`}>
+              <span className={`text-[10px] ${idx === examIdx ? 'text-white/80' : 'text-[#6E6E73]'}`}>
                 {ex.category}
               </span>
             </div>
-            <div className="mt-0.5 text-xs font-semibold max-w-[190px] truncate">{ex.title}</div>
+            <div className="mt-0.5 max-w-[190px] truncate text-xs font-semibold">{ex.title}</div>
           </button>
         ))}
       </div>
 
       {toastMsg && (
-        <div className="rounded-md border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-2 text-xs font-semibold text-[#15803d]">
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2 text-xs font-semibold text-[#1D1D1F]">
           {toastMsg}
         </div>
       )}
 
-      {/* 左右2ペイン */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-start">
-        {/* 左ペイン：問題文・業務ルール・手書きオーバーレイ */}
-        <div className={`${leftColClass} space-y-4`}>
-          <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#71717a]">
-              <span className="font-semibold text-[#1d4ed8]">
-                {exam.year} ・ {exam.section}
-              </span>
-              <span className="font-mono">目安 {exam.timeLimitMin}分</span>
-            </div>
-            <h3 className="text-base font-bold text-[#18181b]">{exam.title}</h3>
-            <p className="text-sm text-[#3f3f46] leading-relaxed">{exam.backgroundText}</p>
+      {/* iPhone用スティッキー・セグメントコントロール（md未満のみ） */}
+      <div className="sticky top-12 z-20 -mx-4 border-b border-slate-200/80 bg-[#F5F5F7]/95 px-4 py-2 backdrop-blur-md md:hidden">
+        <div
+          role="tablist"
+          aria-label="CBT演習ペイン切替"
+          className="grid grid-cols-3 gap-1 rounded-lg bg-[#E5E5EA]/90 p-1"
+        >
+          {(
+            [
+              { id: 'problem', label: '問題・図表' },
+              { id: 'editor', label: '解答・エディタ' },
+              { id: 'explanation', label: '解説' },
+            ] as const
+          ).map((seg) => {
+            const active = mobilePane === seg.id;
+            return (
+              <button
+                key={seg.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => handleSwitchMobilePane(seg.id)}
+                className={`rounded-md py-1.5 text-xs font-semibold transition ${
+                  active
+                    ? 'bg-white text-[#1D1D1F] shadow-xs'
+                    : 'text-[#6E6E73] active:text-[#1D1D1F]'
+                }`}
+              >
+                {seg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-            <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-3.5 space-y-2">
-              <div className="text-xs font-bold text-[#18181b]">業務ルール・前提条件</div>
-              <ul className="space-y-1.5 text-xs sm:text-sm text-[#27272a] list-disc pl-5 leading-relaxed">
+      {/* 左右2ペイン（md以上は左右分割、md未満はセグメント表示） */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12 items-start">
+        {/* 左ペイン：問題文・業務ルール・手書きオーバーレイ */}
+        <div
+          className={`${leftColClass} space-y-4 ${
+            mobilePane === 'problem' ? 'block' : 'hidden md:block'
+          }`}
+        >
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#6E6E73]">
+              <span className="font-semibold text-[#007AFF]">
+                <span className="font-mono tabular-nums">{exam.year}</span> ・ {exam.section}
+              </span>
+              <span className="font-mono tabular-nums">目安 {exam.timeLimitMin}分</span>
+            </div>
+            <h3 className="text-base font-bold text-[#1D1D1F]">{exam.title}</h3>
+            <p className="text-sm text-[#1D1D1F]/90 leading-relaxed">{exam.backgroundText}</p>
+
+            <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 space-y-2">
+              <div className="text-xs font-bold text-[#1D1D1F]">業務ルール・前提条件</div>
+              <ul className="space-y-1.5 text-xs sm:text-sm text-[#1D1D1F]/90 list-disc pl-5 leading-relaxed">
                 {exam.businessRules.map((rule, i) => (
                   <li key={i}>{rule}</li>
                 ))}
@@ -317,34 +378,38 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
         </div>
 
         {/* 右ペイン：記述・スキーマ下線・シグナル発掘 */}
-        <div className={`${rightColClass} space-y-4`}>
-          <div className="inline-flex flex-wrap rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+        <div
+          className={`${rightColClass} space-y-4 ${
+            mobilePane === 'editor' ? 'block' : 'hidden md:block'
+          }`}
+        >
+          <div className="inline-flex w-full sm:w-auto rounded-lg bg-[#E5E5EA]/80 p-0.5">
             <button
               type="button"
               onClick={() => setRightTab('essay')}
-              className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
-                rightTab === 'essay' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`flex-1 sm:flex-none rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                rightTab === 'essay' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
-              記述解答・添削連携 ({exam.essayQuestions.length})
+              記述 (<span className="font-mono tabular-nums">{exam.essayQuestions.length}</span>)
             </button>
             <button
               type="button"
               onClick={() => setRightTab('schema')}
-              className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
-                rightTab === 'schema' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`flex-1 sm:flex-none rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                rightTab === 'schema' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
-              スキーマ下線エディタ
+              スキーマ下線
             </button>
             <button
               type="button"
               onClick={() => setRightTab('signal')}
-              className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
-                rightTab === 'signal' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`flex-1 sm:flex-none rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                rightTab === 'signal' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
-              本文シグナル発掘
+              シグナル発掘
             </button>
           </div>
 
@@ -359,32 +424,35 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                 return (
                   <div
                     key={q.id}
-                    className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-3"
+                    className="rounded-lg border border-slate-200 bg-white p-4 space-y-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-[#18181b]">{q.label}</span>
+                      <span className="font-mono text-xs font-bold tabular-nums text-[#1D1D1F]">
+                        {q.label}
+                      </span>
                       <span
-                        className={`rounded border px-2 py-0.5 font-mono text-xs font-semibold ${
+                        className={`rounded-md border px-2 py-0.5 font-mono text-xs font-semibold tabular-nums ${
                           over
-                            ? 'border-[#fecdd3] bg-[#fff1f2] text-[#be123c]'
-                            : 'border-[#e4e4e0] bg-[#f6f6f4] text-[#52525b]'
+                            ? 'border-red-200 bg-red-50 text-red-700'
+                            : 'border-slate-200 bg-[#F5F5F7] text-[#6E6E73]'
                         }`}
                       >
                         {len} / {q.maxChars} 字{over ? '（超過）' : ''}
                       </span>
                     </div>
 
-                    <p className="text-sm font-medium text-[#18181b] leading-relaxed">{q.prompt}</p>
+                    <p className="text-sm font-medium text-[#1D1D1F] leading-relaxed">{q.prompt}</p>
 
+                    {/* CBT記述解答欄（iPhone自動ズーム防止のため text-base md:text-sm） */}
                     <textarea
                       value={draft}
                       onChange={(e) => store.saveCbtDraft(q.id, e.target.value)}
                       rows={3}
                       placeholder={`記述解答を入力（${q.maxChars}字以内・自動保存）`}
-                      className={`w-full rounded-md border bg-[#fafafa] p-3 text-sm text-[#18181b] leading-relaxed focus:bg-white focus:outline-none ${
+                      className={`w-full rounded-lg border bg-[#F5F5F7]/60 p-3 text-base md:text-sm text-[#1D1D1F] leading-relaxed focus:bg-white focus:outline-none ${
                         over
-                          ? 'border-[#be123c] focus:border-[#be123c]'
-                          : 'border-[#d4d4d0] focus:border-[#18181b]'
+                          ? 'border-red-500 focus:border-red-600'
+                          : 'border-slate-200 focus:border-[#007AFF]'
                       }`}
                     />
 
@@ -392,49 +460,49 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                       <button
                         type="button"
                         onClick={() => handleCopyGeminiPrompt(q.id)}
-                        className="rounded-md bg-[#18181b] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#27272a] transition"
+                        className="rounded-lg bg-[#007AFF] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0066D6] transition"
                       >
-                        Gemini添削プロンプトをコピー (@db-afternoon-kakomon-review)
+                        Gemini添削プロンプトをコピー
                       </button>
                       <button
                         type="button"
                         onClick={() =>
                           setRevealedEssays((prev) => ({ ...prev, [q.id]: !prev[q.id] }))
                         }
-                        className="rounded-md border border-[#d4d4d0] bg-white px-3 py-2 text-xs font-semibold text-[#52525b] hover:bg-[#f1f1ee]"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
                       >
                         {revealed ? '公式解答を隠す' : '公式解答・採点基準'}
                       </button>
                     </div>
 
                     {revealed && (
-                      <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-3.5 space-y-2.5 text-xs">
+                      <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 space-y-2.5 text-xs">
                         <div>
-                          <span className="font-bold text-[#15803d]">公式解答例：</span>
-                          <span className="text-[#18181b] font-medium">{q.officialAnswer}</span>
-                          <span className="ml-2 font-mono text-[#71717a]">
+                          <span className="font-bold text-[#007AFF]">公式解答例：</span>
+                          <span className="text-[#1D1D1F] font-medium">{q.officialAnswer}</span>
+                          <span className="ml-2 font-mono tabular-nums text-[#6E6E73]">
                             （{q.officialAnswer.length}字）
                           </span>
                         </div>
-                        <ul className="list-disc pl-4 space-y-1 text-[#3f3f46]">
+                        <ul className="list-disc pl-4 space-y-1 text-[#1D1D1F]/85">
                           {q.gradingPoints.map((pt, i) => (
                             <li key={i}>{pt}</li>
                           ))}
                         </ul>
-                        <div className="text-[#71717a]">ヒント：{q.hint}</div>
+                        <div className="text-[#6E6E73]">ヒント：{q.hint}</div>
 
                         <div className="flex flex-wrap gap-2 pt-1">
                           <button
                             type="button"
                             onClick={() => handleEssaySelfGrade(q.id, true)}
-                            className="rounded-md border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-1.5 text-xs font-semibold text-[#15803d]"
+                            className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-[#007AFF]"
                           >
                             自己採点：合格レベル
                           </button>
                           <button
                             type="button"
                             onClick={() => handleEssaySelfGrade(q.id, false)}
-                            className="rounded-md border border-[#fecdd3] bg-[#fff1f2] px-3 py-1.5 text-xs font-semibold text-[#be123c]"
+                            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700"
                           >
                             不十分 → 弱点復習キューへ登録
                           </button>
@@ -446,20 +514,20 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
               })}
 
               {previewPrompt && (
-                <div className="rounded-lg border border-[#e4e4e0] bg-white p-3.5 space-y-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#18181b]">
+                    <span className="text-xs font-bold text-[#1D1D1F]">
                       生成済み添削依頼プロンプト（@db-afternoon-kakomon-review）
                     </span>
                     <button
                       type="button"
                       onClick={() => setPreviewPrompt(null)}
-                      className="text-xs text-[#71717a] hover:text-[#18181b]"
+                      className="text-xs text-[#6E6E73] hover:text-[#1D1D1F]"
                     >
                       閉じる
                     </button>
                   </div>
-                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-3 font-mono text-[11px] text-[#3f3f46]">
+                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-[#F5F5F7] p-3 font-mono text-[11px] text-[#1D1D1F]">
                     {previewPrompt}
                   </pre>
                 </div>
@@ -468,17 +536,17 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
           )}
 
           {rightTab === 'schema' && (
-            <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
               <div>
-                <div className="text-xs font-bold text-[#52525b]">関係スキーマ下線エディタ</div>
-                <p className="mt-1 text-sm font-medium text-[#18181b]">
+                <div className="text-xs font-bold text-[#6E6E73]">関係スキーマ下線エディタ</div>
+                <p className="mt-1 text-sm font-medium text-[#1D1D1F]">
                   {exam.schemaQuestion.prompt}
                 </p>
               </div>
 
-              <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-4">
+              <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-bold text-[#18181b]">
+                  <span className="text-sm font-bold text-[#1D1D1F]">
                     {exam.schemaQuestion.schema.tableName} (
                   </span>
                   {exam.schemaQuestion.schema.attributes.map((attr, idx) => {
@@ -490,22 +558,22 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                         key={attr.name}
                         type="button"
                         onClick={() => handleToggleSchemaRole(idx)}
-                        className={`flex flex-col items-center rounded-md border px-3 py-2 transition ${
+                        className={`flex flex-col items-center rounded-lg border px-3 py-2 transition ${
                           ok
-                            ? 'border-[#15803d] bg-[#f0fdf4]'
+                            ? 'border-emerald-600 bg-emerald-50'
                             : ng
-                              ? 'border-[#be123c] bg-[#fff1f2]'
-                              : 'border-[#d4d4d0] bg-white hover:border-[#18181b]'
+                              ? 'border-red-500 bg-red-50'
+                              : 'border-slate-200 bg-white hover:border-[#007AFF]'
                         }`}
                       >
                         <span className={`text-sm ${KEY_ROLE_CLASS[chosen]}`}>{attr.name}</span>
-                        <span className="mt-1 text-[10px] text-[#71717a]">
+                        <span className="mt-1 text-[10px] text-[#6E6E73]">
                           {KEY_ROLE_LABEL[chosen]}
                         </span>
                       </button>
                     );
                   })}
-                  <span className="text-sm font-bold text-[#18181b]">)</span>
+                  <span className="text-sm font-bold text-[#1D1D1F]">)</span>
                 </div>
               </div>
 
@@ -513,7 +581,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                 <button
                   type="button"
                   onClick={handleGradeCbtSchema}
-                  className="rounded-md bg-[#18181b] px-4 py-2 text-xs font-semibold text-white hover:bg-[#27272a]"
+                  className="rounded-lg bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0066D6]"
                 >
                   スキーマ下線を採点する
                 </button>
@@ -523,7 +591,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                     setSchemaRoles(exam.schemaQuestion.schema.attributes.map(() => 'none'));
                     setSchemaResult(null);
                   }}
-                  className="rounded-md border border-[#d4d4d0] bg-white px-3.5 py-2 text-xs text-[#52525b] hover:bg-[#f1f1ee]"
+                  className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs text-[#6E6E73] hover:bg-[#F5F5F7]"
                 >
                   リセット
                 </button>
@@ -532,10 +600,10 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
               {schemaResult && (
                 <div className="space-y-2">
                   <div
-                    className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+                    className={`rounded-lg border px-3 py-2 font-mono text-xs font-semibold tabular-nums ${
                       schemaResult.perfect
-                        ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'
-                        : 'border-[#fecdd3] bg-[#fff1f2] text-[#9f1239]'
+                        ? 'border-sky-200 bg-sky-50 text-[#007AFF]'
+                        : 'border-red-200 bg-red-50 text-red-700'
                     }`}
                   >
                     {schemaResult.perfect
@@ -549,6 +617,81 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
           )}
 
           {rightTab === 'signal' && <SignalDrill exam={exam} store={store} />}
+        </div>
+
+        {/* モバイル用「解説」セグメント専用パネル（md未満かつ解説選択時のみ表示） */}
+        <div className={mobilePane === 'explanation' ? 'block space-y-4 md:hidden' : 'hidden'}>
+          {/* 1. 記述設問の公式解答・採点ポイント */}
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+            <h3 className="text-sm font-bold text-[#1D1D1F]">
+              記述設問の公式解答・採点ポイント
+            </h3>
+            {exam.essayQuestions.map((q) => (
+              <div
+                key={q.id}
+                className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 space-y-2 text-xs"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-bold tabular-nums text-[#1D1D1F]">{q.label}</span>
+                  <span className="font-mono text-[11px] tabular-nums text-[#6E6E73]">
+                    {q.officialAnswer.length} / {q.maxChars}字
+                  </span>
+                </div>
+                <p className="font-medium text-[#1D1D1F] leading-relaxed">{q.officialAnswer}</p>
+                <ul className="list-disc pl-4 space-y-1 text-[#6E6E73]">
+                  {q.gradingPoints.map((pt, i) => (
+                    <li key={i}>{pt}</li>
+                  ))}
+                </ul>
+                <div className="text-[#6E6E73]">ヒント：{q.hint}</div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleEssaySelfGrade(q.id, true)}
+                    className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-[#007AFF]"
+                  >
+                    合格レベル
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEssaySelfGrade(q.id, false)}
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700"
+                  >
+                    弱点キューへ登録
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 2. スキーマ下線 正解 */}
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2.5">
+            <h3 className="text-sm font-bold text-[#1D1D1F]">スキーマ下線の正解</h3>
+            <SchemaLineDisplay schema={exam.schemaQuestion.schema} />
+          </div>
+
+          {/* 3. 本文シグナル決定打一覧 */}
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2.5">
+            <h3 className="text-sm font-bold text-[#1D1D1F]">
+              本文シグナル決定打（<span className="font-mono tabular-nums">{trueSignals.length}</span>箇所）
+            </h3>
+            <div className="space-y-2">
+              {trueSignals.map((sig) => (
+                <div
+                  key={sig.id}
+                  className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3 text-xs space-y-1"
+                >
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono text-[11px] font-semibold text-[#007AFF]">
+                      [{sig.signalKind}]
+                    </span>
+                    <span className="font-bold text-[#1D1D1F]">「{sig.text}」</span>
+                  </div>
+                  <p className="text-[#6E6E73] leading-relaxed">{sig.explanation}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

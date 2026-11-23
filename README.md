@@ -25,5 +25,5 @@ npx vite preview --host 0.0.0.0 --port 4173
 - **インラインSVG不使用（0件）**：すべてのE-R図・FD図・タイムライン・チャート・4096Bページマップを HTML5 `<canvas>` 2D API（`devicePixelRatio`対応）で描画
 - **SQL実行二段構え**：`sql.js`（SQLite WASM）＋ オフライン自動フォールバック評価＆プリコンパイルキャッシュ
 - **iPadOS単一HTMLオフライン両立**：クラシックIIFE `<script>` 変換プラグイン＋`data:` URL 向け `MessageChannel` ガード搭載（ショートカット起動も引き続き利用可能）
-- **3秒端末同期**：`localStorage` 自動保存＋LZ77圧縮Base64同期コード＋JSON入出力
+- **無料クラウド自動同期 ＆ 3秒端末同期**：GitHub 非公開 Gist による端末間自動同期（無料・オフライン競合時の非破壊マージ対応）＋ `localStorage` 自動保存＋LZ77圧縮Base64同期コード＋JSON入出力
 - **5大モジュール**：3大Canvasラボ／実機SQL道場／CBTスプリット画面＆3大特化機能／2回連続満点卒業の弱点復習キュー／18週間ロードマップ＆合格教本9章・重要語句200フラッシュカード

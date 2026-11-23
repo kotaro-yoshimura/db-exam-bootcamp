@@ -11,7 +11,9 @@ import {
   drawRoundedRect,
   drawCanvasGrid,
   drawPillBadge,
+  drawFittedText,
 } from '../../utils/canvasHelpers';
+import { useCanvasContainerWidth } from '../../utils/useCanvasWidth';
 
 interface Props {
   store: StudyStore;
@@ -36,26 +38,11 @@ const PHASE_COLORS: Record<string, string> = {
   'Phase 5: CBT本番形式・弱点完全撲滅': '#fb7185',
 };
 
-const CATEGORY_STYLE: Record<
-  NonNullable<RoadmapTask['category']>,
-  { label: string; cls: string }
-> = {
-  textbook: {
-    label: 'テキスト',
-    cls: 'border-[#fde68a] bg-[#fffbeb] text-[#92400e]',
-  },
-  app: {
-    label: '演習',
-    cls: 'border-[#e4e4e0] bg-[#f6f6f4] text-[#3f3f46]',
-  },
-  cbt: {
-    label: 'CBT',
-    cls: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]',
-  },
-  review: {
-    label: '復習',
-    cls: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
-  },
+const CATEGORY_LABEL: Record<NonNullable<RoadmapTask['category']>, string> = {
+  textbook: 'テキスト',
+  app: '演習',
+  cbt: 'CBT',
+  review: '復習',
 };
 
 function formatYmd(d: Date): string {
@@ -129,17 +116,18 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'textbook' | 'practice'>('all');
   const [phaseFilter, setPhaseFilter] = useState<string>('ALL');
   const [showChart, setShowChart] = useState(false);
-  const [tick, setTick] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerW = useCanvasContainerWidth(containerRef, 360);
+  const isCompact = containerW < 420;
+  const drawWidth = Math.max(containerW, isCompact ? 520 : 320);
 
   const completedSet = useMemo(
     () => new Set(store.state.completedRoadmapTasks),
     [store.state.completedRoadmapTasks]
   );
 
-  // 全体進捗とテキスト通読進捗を分離集計
   const allTasks = ROADMAP_WEEKS.flatMap((w) => w.tasks);
   const textbookTasks = allTasks.filter((t) => t.category === 'textbook');
   const practiceTasks = allTasks.filter((t) => t.category !== 'textbook');
@@ -149,6 +137,7 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
   const donePractice = practiceTasks.filter((t) => completedSet.has(t.id)).length;
   const overallPct = Math.round((doneTotal / Math.max(1, allTasks.length)) * 100);
   const textbookPct = Math.round((doneTextbook / Math.max(1, textbookTasks.length)) * 100);
+  const practicePct = Math.round((donePractice / Math.max(1, practiceTasks.length)) * 100);
 
   const activeMonth = TARGET_MONTHS[monthIdx];
   const calendarRows = useMemo(
@@ -159,20 +148,13 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
   const selectedWeek =
     ROADMAP_WEEKS.find((w) => w.weekNumber === selectedWeekNum) || currentWeekObj;
 
-  useEffect(() => {
-    const onResize = () => setTick((t) => t + 1);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  // HTML5 Canvas：18週間ロードマップ週別進捗チャート（展開時または一覧ビュー時）
+  // HTML5 Canvas：18週間ロードマップ週別進捗チャート
   useEffect(() => {
     if (!showChart && viewMode !== 'list') return;
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
-    const width = Math.max(320, container.clientWidth);
+    const width = drawWidth;
     const height = 220;
     const ctx = setupHiDpiCanvas(canvas, width, height);
     if (!ctx) return;
@@ -180,13 +162,15 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
     drawCanvasGrid(ctx, width, height, 24);
 
     ctx.fillStyle = CANVAS_COLORS.textMain;
-    ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
+    ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_FONT_FAMILY}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(
+    drawFittedText(
+      ctx,
       `18週間（2026/11/23–2027/03/28）週別達成率 — 全体 ${doneTotal}/${allTasks.length} (${overallPct}%)`,
-      14,
-      20
+      12,
+      20,
+      width - 24
     );
 
     const chartX = 38;
@@ -210,7 +194,7 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
     });
 
     const barGap = 4;
-    const barW = Math.max(8, (chartW - barGap * 17) / 18);
+    const barW = Math.max(10, (chartW - barGap * 17) / 18);
 
     ROADMAP_WEEKS.forEach((w, idx) => {
       const done = w.tasks.filter((t) => completedSet.has(t.id)).length;
@@ -228,12 +212,13 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
         drawPillBadge(ctx, '今週', bx + barW / 2, chartY - 12, CANVAS_COLORS.cyanSoft, CANVAS_COLORS.cyan, CANVAS_COLORS.cyan, 9);
       }
 
-      ctx.fillStyle = w.weekNumber === currentWeekObj.weekNumber ? CANVAS_COLORS.cyan : CANVAS_COLORS.textMuted;
+      ctx.fillStyle =
+        w.weekNumber === currentWeekObj.weekNumber ? CANVAS_COLORS.cyan : CANVAS_COLORS.textMuted;
       ctx.font = `700 9px ${CANVAS_MONO_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.fillText(`W${w.weekNumber}`, bx + barW / 2, chartY + chartH + 14);
     });
-  }, [completedSet, doneTotal, allTasks.length, overallPct, currentWeekObj.weekNumber, showChart, viewMode, tick]);
+  }, [completedSet, doneTotal, allTasks.length, overallPct, currentWeekObj.weekNumber, showChart, viewMode, drawWidth, isCompact]);
 
   const filterTasks = (tasks: RoadmapTask[]) => {
     if (taskTypeFilter === 'textbook') return tasks.filter((t) => t.category === 'textbook');
@@ -243,13 +228,10 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
 
   const phases = Array.from(new Set(ROADMAP_WEEKS.map((w) => w.phase)));
   const visibleWeeks =
-    phaseFilter === 'ALL'
-      ? ROADMAP_WEEKS
-      : ROADMAP_WEEKS.filter((w) => w.phase === phaseFilter);
+    phaseFilter === 'ALL' ? ROADMAP_WEEKS : ROADMAP_WEEKS.filter((w) => w.phase === phaseFilter);
 
   const handleSelectMonth = (idx: number) => {
     setMonthIdx(idx);
-    // 選んだ月に含まれる最初のロードマップ週を自動選択して詳細パネルを同期
     const m = TARGET_MONTHS[idx];
     const rows = buildMonthCalendarRows(m.year, m.month);
     const firstWithWeek = rows.find((r) => r.roadmapWeek !== null);
@@ -260,26 +242,21 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
 
   const renderTaskRow = (t: RoadmapTask) => {
     const checked = completedSet.has(t.id);
-    const cat = CATEGORY_STYLE[t.category || 'app'];
+    const catLabel = CATEGORY_LABEL[t.category || 'app'];
     return (
-      <div
-        key={t.id}
-        className="flex items-start justify-between gap-2.5 px-3 py-2.5 bg-white"
-      >
+      <div key={t.id} className="flex items-start justify-between gap-2.5 bg-white px-3 py-2.5">
         <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed">
           <input
             type="checkbox"
             checked={checked}
             onChange={() => store.toggleRoadmapTask(t.id)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-[#18181b]"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[#007AFF]"
           />
-          <div className="space-y-1">
-            <span
-              className={`mr-1.5 inline-block rounded border px-1.5 py-0.2 text-[10px] font-semibold ${cat.cls}`}
-            >
-              {cat.label}
+          <div>
+            <span className="mr-1.5 inline-block rounded border border-slate-200 bg-[#F5F5F7] px-1.5 py-0.5 text-[10px] font-semibold text-[#6E6E73]">
+              {catLabel}
             </span>
-            <span className={checked ? 'line-through text-[#a1a1aa]' : 'text-[#18181b]'}>
+            <span className={checked ? 'line-through text-[#6E6E73]/60' : 'text-[#1D1D1F]'}>
               {t.label}
             </span>
           </div>
@@ -288,7 +265,7 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
           <button
             type="button"
             onClick={() => onNavigateModule(t.targetModule!)}
-            className="shrink-0 text-[11px] font-semibold text-[#1d4ed8] hover:underline pt-0.5"
+            className="shrink-0 pt-0.5 text-[11px] font-semibold text-[#007AFF] hover:underline"
           >
             開く →
           </button>
@@ -299,59 +276,54 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
 
   return (
     <div className="space-y-4">
-      {/* 進捗サマリーバー（全体 / テキスト通読 / 演習） */}
-      <div className="grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-y-0 sm:divide-x divide-[#e4e4e0] rounded-lg border border-[#e4e4e0] bg-white">
+      {/* 進捗サマリーバー（全体 / テキスト通読 / 演習：ニュートラル＋システムブルー統一） */}
+      <div className="grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-y-0 sm:divide-x divide-slate-200 rounded-lg border border-slate-200 bg-white">
         <div className="p-3.5">
-          <div className="flex items-center justify-between text-[11px] text-[#71717a]">
+          <div className="flex items-center justify-between text-[11px] text-[#6E6E73]">
             <span>全18週間 総合進捗</span>
-            <span className="font-mono font-bold text-[#18181b]">
+            <span className="font-mono font-bold tabular-nums text-[#1D1D1F]">
               {doneTotal}/{allTasks.length}（{overallPct}%）
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e4e4e0]">
-            <div className="h-full bg-[#18181b]" style={{ width: `${overallPct}%` }} />
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full bg-[#007AFF]" style={{ width: `${overallPct}%` }} />
           </div>
         </div>
 
         <div className="p-3.5">
-          <div className="flex items-center justify-between text-[11px] text-[#92400e]">
-            <span className="font-semibold">テキスト通読・精読（全9章）</span>
-            <span className="font-mono font-bold">
+          <div className="flex items-center justify-between text-[11px] text-[#6E6E73]">
+            <span>テキスト通読・精読（全9章）</span>
+            <span className="font-mono font-bold tabular-nums text-[#1D1D1F]">
               {doneTextbook}/{textbookTasks.length}週（{textbookPct}%）
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#fef3c7]">
-            <div className="h-full bg-[#b45309]" style={{ width: `${textbookPct}%` }} />
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full bg-[#007AFF]" style={{ width: `${textbookPct}%` }} />
           </div>
         </div>
 
         <div className="p-3.5">
-          <div className="flex items-center justify-between text-[11px] text-[#52525b]">
+          <div className="flex items-center justify-between text-[11px] text-[#6E6E73]">
             <span>アプリ・SQL・CBT演習</span>
-            <span className="font-mono font-bold text-[#18181b]">
+            <span className="font-mono font-bold tabular-nums text-[#1D1D1F]">
               {donePractice}/{practiceTasks.length}件
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e4e4e0]">
-            <div
-              className="h-full bg-[#15803d]"
-              style={{
-                width: `${Math.round((donePractice / Math.max(1, practiceTasks.length)) * 100)}%`,
-              }}
-            />
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full bg-[#007AFF]" style={{ width: `${practicePct}%` }} />
           </div>
         </div>
       </div>
 
-      {/* コントロール行：表示切替・タスク種別フィルタ・グラフ表示 */}
+      {/* コントロール行 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('calendar')}
-              className={`rounded px-3 py-1.5 text-xs font-semibold ${
-                viewMode === 'calendar' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                viewMode === 'calendar' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
               月間カレンダー
@@ -359,28 +331,28 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`rounded px-3 py-1.5 text-xs font-semibold ${
-                viewMode === 'list' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                viewMode === 'list' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
               全18週一覧
             </button>
           </div>
 
-          <div className="inline-flex rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
             {(
               [
                 { id: 'all', label: 'すべて' },
-                { id: 'textbook', label: 'テキストのみ' },
-                { id: 'practice', label: '演習のみ' },
+                { id: 'textbook', label: 'テキスト' },
+                { id: 'practice', label: '演習' },
               ] as const
             ).map((f) => (
               <button
                 key={f.id}
                 type="button"
                 onClick={() => setTaskTypeFilter(f.id)}
-                className={`rounded px-2.5 py-1 text-xs font-semibold ${
-                  taskTypeFilter === f.id ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                  taskTypeFilter === f.id ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
                 }`}
               >
                 {f.label}
@@ -393,30 +365,29 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
           <button
             type="button"
             onClick={() => setShowChart((s) => !s)}
-            className="rounded-md border border-[#d4d4d0] bg-white px-3 py-1.5 text-xs font-semibold text-[#52525b] hover:bg-[#f1f1ee]"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
           >
             {showChart ? '週別棒グラフを隠す' : '週別棒グラフを表示'}
           </button>
         )}
       </div>
 
-      {/* ================= モードA：月間カレンダー表示 ================= */}
+      {/* モードA：月間カレンダー表示 */}
       {viewMode === 'calendar' ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-start">
-          {/* 左：月間カレンダーグリッド（7/12） */}
-          <div className="lg:col-span-7 rounded-lg border border-[#e4e4e0] bg-white overflow-hidden">
-            {/* 月切替ヘッダ */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e4e0] bg-[#fafafa] px-4 py-3">
+          {/* 左：月間カレンダーグリッド */}
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-7">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-[#F5F5F7]/70 px-4 py-3">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={monthIdx === 0}
                   onClick={() => handleSelectMonth(Math.max(0, monthIdx - 1))}
-                  className="rounded border border-[#d4d4d0] bg-white px-2 py-1 text-xs font-semibold text-[#18181b] hover:bg-[#f1f1ee] disabled:opacity-35"
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-[#1D1D1F] hover:bg-[#F5F5F7] disabled:opacity-35"
                 >
                   ←
                 </button>
-                <h3 className="font-mono text-base font-bold text-[#18181b] min-w-[105px] text-center">
+                <h3 className="min-w-[105px] text-center font-mono text-base font-bold tabular-nums text-[#1D1D1F]">
                   {activeMonth.label}
                 </h3>
                 <button
@@ -425,7 +396,7 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                   onClick={() =>
                     handleSelectMonth(Math.min(TARGET_MONTHS.length - 1, monthIdx + 1))
                   }
-                  className="rounded border border-[#d4d4d0] bg-white px-2 py-1 text-xs font-semibold text-[#18181b] hover:bg-[#f1f1ee] disabled:opacity-35"
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-[#1D1D1F] hover:bg-[#F5F5F7] disabled:opacity-35"
                 >
                   →
                 </button>
@@ -437,10 +408,10 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                     key={m.label}
                     type="button"
                     onClick={() => handleSelectMonth(idx)}
-                    className={`rounded px-2 py-1 font-mono text-[11px] font-semibold transition ${
+                    className={`rounded-md px-2 py-1 font-mono text-[11px] font-semibold tabular-nums transition ${
                       idx === monthIdx
-                        ? 'bg-[#18181b] text-white'
-                        : 'text-[#52525b] hover:bg-[#e4e4e0]'
+                        ? 'bg-[#007AFF] text-white'
+                        : 'text-[#6E6E73] hover:bg-slate-200/70'
                     }`}
                   >
                     {m.short}
@@ -452,33 +423,24 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                     setMonthIdx(initialMonthIdx);
                     setSelectedWeekNum(currentWeekObj.weekNumber);
                   }}
-                  className="ml-1 rounded border border-[#d4d4d0] bg-white px-2 py-1 text-[11px] font-semibold text-[#1d4ed8] hover:bg-[#eff6ff]"
+                  className="ml-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-[#007AFF] hover:bg-sky-50"
                 >
                   今日
                 </button>
               </div>
             </div>
 
-            {/* 曜日見出し（月曜始まり） */}
-            <div className="grid grid-cols-7 border-b border-[#e4e4e0] bg-[#f6f6f4] text-center text-[11px] font-semibold">
-              {WEEKDAY_LABELS.map((wday, i) => (
-                <div
-                  key={wday}
-                  className={`py-2 ${
-                    i === 5
-                      ? 'text-[#1d4ed8]'
-                      : i === 6
-                        ? 'text-[#be123c]'
-                        : 'text-[#52525b]'
-                  }`}
-                >
+            {/* 曜日見出し */}
+            <div className="grid grid-cols-7 border-b border-slate-200 bg-[#F5F5F7] text-center text-[11px] font-semibold text-[#6E6E73]">
+              {WEEKDAY_LABELS.map((wday) => (
+                <div key={wday} className="py-2">
                   {wday}
                 </div>
               ))}
             </div>
 
-            {/* 週ごとのカレンダー行（上段：7日間の日付マス / 下段：週テーマ＋テキスト章の予定帯） */}
-            <div className="divide-y divide-[#e4e4e0]">
+            {/* 週ごとのカレンダー行 */}
+            <div className="divide-y divide-slate-200">
               {calendarRows.map((row) => {
                 const w = row.roadmapWeek;
                 const isSelected = w !== null && w.weekNumber === selectedWeek.weekNumber;
@@ -493,43 +455,36 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                   <div
                     key={row.mondayStr}
                     onClick={() => w && setSelectedWeekNum(w.weekNumber)}
-                    className={`transition ${
-                      w ? 'cursor-pointer' : 'opacity-50'
-                    } ${
+                    className={`transition ${w ? 'cursor-pointer' : 'opacity-45'} ${
                       isSelected
-                        ? 'bg-[#f6f6f4] ring-2 ring-inset ring-[#18181b]'
+                        ? 'bg-sky-50/50 ring-2 ring-inset ring-[#007AFF]'
                         : w
-                          ? 'hover:bg-[#fafafa]'
-                          : 'bg-[#fafafa]'
+                          ? 'hover:bg-slate-50/70'
+                          : 'bg-slate-50/50'
                     }`}
                   >
-                    {/* 7日間の日付マス */}
-                    <div className="grid grid-cols-7 divide-x divide-[#f1f1ee]">
+                    <div className="grid grid-cols-7 divide-x divide-slate-100">
                       {row.days.map((d) => {
                         const isToday = d.dateStr === todayStr;
                         const isExamGoal = d.dateStr === '2027-03-28';
                         return (
                           <div
                             key={d.dateStr}
-                            className="flex flex-col items-center justify-start px-1 pt-2 pb-1.5 min-h-[42px]"
+                            className="flex min-h-[40px] flex-col items-center justify-start px-1 pt-2 pb-1.5"
                           >
                             <span
-                              className={`flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs ${
+                              className={`flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs tabular-nums ${
                                 isToday
-                                  ? 'bg-[#18181b] font-bold text-white'
+                                  ? 'bg-[#007AFF] font-bold text-white'
                                   : !d.inMonth
-                                    ? 'text-[#c4c4be]'
-                                    : d.dow === 5
-                                      ? 'font-semibold text-[#1d4ed8]'
-                                      : d.dow === 6
-                                        ? 'font-semibold text-[#be123c]'
-                                        : 'font-medium text-[#18181b]'
+                                    ? 'text-slate-300'
+                                    : 'font-medium text-[#1D1D1F]'
                               }`}
                             >
                               {d.dayNum}
                             </span>
                             {isExamGoal && (
-                              <span className="mt-0.5 rounded bg-[#be123c] px-1 text-[9px] font-bold text-white">
+                              <span className="mt-0.5 rounded bg-[#007AFF] px-1 text-[9px] font-bold text-white">
                                 目標日
                               </span>
                             )}
@@ -538,41 +493,38 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                       })}
                     </div>
 
-                    {/* 週の予定帯（終日イベント風：週番号・テキスト章・テーマ・完了率） */}
                     {w && (
                       <div className="px-2 pb-2">
                         <div
-                          className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded border px-2.5 py-1.5 text-[11px] ${
+                          className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-md border px-2.5 py-1.5 text-[11px] ${
                             wAllDone
-                              ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534]'
+                              ? 'border-sky-200 bg-sky-50 text-[#1D1D1F]'
                               : isSelected
-                                ? 'border-[#18181b] bg-white text-[#18181b]'
-                                : 'border-[#e4e4e0] bg-[#fafafa] text-[#3f3f46]'
+                                ? 'border-[#007AFF]/50 bg-white text-[#1D1D1F]'
+                                : 'border-slate-200 bg-[#F5F5F7]/70 text-[#1D1D1F]'
                           }`}
                         >
-                          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                            <span className="font-mono font-bold text-[#18181b]">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                            <span className="font-mono font-bold tabular-nums text-[#1D1D1F]">
                               W{String(w.weekNumber).padStart(2, '0')}
                             </span>
                             {isCurrentWeek && (
-                              <span className="rounded bg-[#eff6ff] border border-[#bfdbfe] px-1 text-[9px] font-bold text-[#1d4ed8]">
+                              <span className="rounded border border-sky-200 bg-sky-50 px-1 text-[9px] font-bold text-[#007AFF]">
                                 今週
                               </span>
                             )}
                             <span
-                              className={`rounded border px-1.5 py-0.2 text-[10px] font-semibold ${
-                                tbDone
-                                  ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d] line-through'
-                                  : 'border-[#fde68a] bg-[#fffbeb] text-[#92400e]'
+                              className={`rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold ${
+                                tbDone ? 'line-through text-[#6E6E73]/60' : 'text-[#6E6E73]'
                               }`}
                             >
-                              テキスト：{w.textbookRange}
+                              {w.textbookRange}
                             </span>
-                            <span className="truncate font-medium max-w-[230px] sm:max-w-[280px]">
+                            <span className="max-w-[230px] truncate font-medium sm:max-w-[280px]">
                               {w.theme}
                             </span>
                           </div>
-                          <span className="shrink-0 font-mono text-[11px] font-bold">
+                          <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-[#1D1D1F]">
                             {wDone}/{wTotal}
                           </span>
                         </div>
@@ -584,51 +536,52 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
             </div>
           </div>
 
-          {/* 右：選択した週のタスク詳細パネル（5/12） */}
-          <div className="lg:col-span-5 rounded-lg border border-[#e4e4e0] bg-white overflow-hidden">
-            <div className="border-b border-[#e4e4e0] bg-[#fafafa] px-4 py-3 space-y-1">
+          {/* 右：選択週のタスク詳細パネル */}
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-5">
+            <div className="border-b border-slate-200 bg-[#F5F5F7]/70 px-4 py-3 space-y-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-[#18181b] px-2 py-0.5 font-mono text-xs font-bold text-white">
+                  <span className="rounded-md bg-[#007AFF] px-2 py-0.5 font-mono text-xs font-bold tabular-nums text-white">
                     Week {String(selectedWeek.weekNumber).padStart(2, '0')}
                   </span>
-                  <span className="font-mono text-xs text-[#52525b]">
+                  <span className="font-mono text-xs tabular-nums text-[#6E6E73]">
                     {selectedWeek.startDate} – {selectedWeek.endDate}
                   </span>
                 </div>
-                <span className="font-mono text-xs font-bold text-[#15803d]">
+                <span className="font-mono text-xs font-bold tabular-nums text-[#1D1D1F]">
                   {selectedWeek.tasks.filter((t) => completedSet.has(t.id)).length}/
                   {selectedWeek.tasks.length} 完了
                 </span>
               </div>
-              <div className="text-[11px] font-semibold text-[#71717a]">{selectedWeek.phase}</div>
-              <h4 className="text-sm font-bold text-[#18181b]">{selectedWeek.theme}</h4>
+              <div className="text-[11px] font-semibold text-[#6E6E73]">{selectedWeek.phase}</div>
+              <h4 className="text-sm font-bold text-[#1D1D1F]">{selectedWeek.theme}</h4>
             </div>
 
             <div className="p-4 space-y-3">
-              {/* テキスト担当範囲ボックス */}
-              <div className="rounded-md border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-xs text-[#78350f]">
-                <span className="font-bold">今週のテキスト範囲：</span>
+              <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] px-3 py-2 text-xs text-[#1D1D1F]">
+                <span className="font-semibold text-[#6E6E73]">テキスト範囲：</span>
                 {selectedWeek.textbookRange}
               </div>
 
-              <p className="text-xs text-[#52525b] leading-relaxed">
-                <strong className="text-[#18181b]">到達目標：</strong>
+              <p className="text-xs leading-relaxed text-[#6E6E73]">
+                <strong className="text-[#1D1D1F]">到達目標：</strong>
                 {selectedWeek.goal}
               </p>
 
-              <div className="divide-y divide-[#f1f1ee] rounded-md border border-[#e4e4e0] overflow-hidden">
+              <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
                 {filterTasks(selectedWeek.tasks).map(renderTaskRow)}
               </div>
 
-              <div className="flex items-center justify-between pt-1 text-[11px] text-[#71717a]">
-                <span>推奨過去問：{selectedWeek.recommendedYears.join(' / ')}</span>
+              <div className="flex items-center justify-between pt-1 text-[11px] text-[#6E6E73]">
+                <span className="font-mono tabular-nums">
+                  過去問：{selectedWeek.recommendedYears.join(' / ')}
+                </span>
                 <div className="flex gap-1">
                   <button
                     type="button"
                     disabled={selectedWeek.weekNumber <= 1}
                     onClick={() => setSelectedWeekNum((n) => Math.max(1, n - 1))}
-                    className="rounded border border-[#d4d4d0] bg-white px-2 py-0.5 text-[#18181b] disabled:opacity-35"
+                    className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[#1D1D1F] disabled:opacity-35"
                   >
                     前週
                   </button>
@@ -636,7 +589,7 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                     type="button"
                     disabled={selectedWeek.weekNumber >= 18}
                     onClick={() => setSelectedWeekNum((n) => Math.min(18, n + 1))}
-                    className="rounded border border-[#d4d4d0] bg-white px-2 py-0.5 text-[#18181b] disabled:opacity-35"
+                    className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[#1D1D1F] disabled:opacity-35"
                   >
                     次週
                   </button>
@@ -646,16 +599,16 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
           </div>
         </div>
       ) : (
-        /* ================= モードB：全18週一覧表示 ================= */
+        /* モードB：全18週一覧表示 */
         <div className="space-y-4">
           <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
               onClick={() => setPhaseFilter('ALL')}
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
                 phaseFilter === 'ALL'
-                  ? 'bg-[#18181b] text-white'
-                  : 'border border-[#d4d4d0] bg-white text-[#52525b]'
+                  ? 'bg-[#007AFF] text-white'
+                  : 'border border-slate-200 bg-white text-[#6E6E73]'
               }`}
             >
               全18週間
@@ -665,10 +618,10 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                 key={p}
                 type="button"
                 onClick={() => setPhaseFilter(p)}
-                className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
                   phaseFilter === p
-                    ? 'bg-[#18181b] text-white'
-                    : 'border border-[#d4d4d0] bg-white text-[#52525b]'
+                    ? 'bg-[#007AFF] text-white'
+                    : 'border border-slate-200 bg-white text-[#6E6E73]'
                 }`}
               >
                 {p.split(':')[0]}
@@ -685,38 +638,38 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
               return (
                 <div
                   key={w.weekNumber}
-                  className={`rounded-lg border p-4 space-y-3 bg-white ${
+                  className={`rounded-lg border bg-white p-4 space-y-3 ${
                     isCurrent
-                      ? 'border-[#18181b] ring-1 ring-[#18181b]'
+                      ? 'border-[#007AFF] ring-1 ring-[#007AFF]/25'
                       : allDone
-                        ? 'border-[#bbf7d0] bg-[#f0fdf4]/40'
-                        : 'border-[#e4e4e0]'
+                        ? 'border-sky-200 bg-sky-50/30'
+                        : 'border-slate-200'
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="rounded bg-[#18181b] px-2 py-0.5 font-mono text-[11px] font-bold text-white">
+                      <span className="rounded-md bg-[#007AFF] px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums text-white">
                         W{String(w.weekNumber).padStart(2, '0')}
                       </span>
-                      <span className="font-mono text-xs text-[#71717a]">
+                      <span className="font-mono text-xs tabular-nums text-[#6E6E73]">
                         {w.startDate} – {w.endDate}
                       </span>
-                      <span className="rounded border border-[#fde68a] bg-[#fffbeb] px-1.5 py-0.5 text-[10px] font-semibold text-[#92400e]">
+                      <span className="rounded-md border border-slate-200 bg-[#F5F5F7] px-1.5 py-0.5 text-[10px] font-semibold text-[#6E6E73]">
                         {w.textbookRange}
                       </span>
                     </div>
-                    <span className="font-mono text-xs font-bold text-[#15803d]">
+                    <span className="font-mono text-xs font-bold tabular-nums text-[#1D1D1F]">
                       {done}/{w.tasks.length}
                     </span>
                   </div>
 
                   <div>
-                    <div className="text-[11px] font-semibold text-[#71717a]">{w.phase}</div>
-                    <h4 className="mt-0.5 text-sm font-bold text-[#18181b]">{w.theme}</h4>
-                    <p className="mt-0.5 text-xs text-[#52525b]">到達目標：{w.goal}</p>
+                    <div className="text-[11px] font-semibold text-[#6E6E73]">{w.phase}</div>
+                    <h4 className="mt-0.5 text-sm font-bold text-[#1D1D1F]">{w.theme}</h4>
+                    <p className="mt-0.5 text-xs text-[#6E6E73]">到達目標：{w.goal}</p>
                   </div>
 
-                  <div className="divide-y divide-[#f1f1ee] rounded-md border border-[#e4e4e0] overflow-hidden">
+                  <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
                     {filterTasks(w.tasks).map(renderTaskRow)}
                   </div>
                 </div>
@@ -726,16 +679,21 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
         </div>
       )}
 
-      {/* 週別棒グラフ（一覧モードまたはカレンダーのトグルON時に表示） */}
+      {/* 週別棒グラフ（小画面時は横スクロール対応） */}
       {(showChart || viewMode === 'list') && (
-        <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-2">
-          <div className="text-xs font-bold text-[#18181b]">18週間 週別達成率グラフ</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2">
+          <div className="text-xs font-bold text-[#1D1D1F]">18週間 週別達成率グラフ</div>
           <div
             ref={containerRef}
-            className="w-full overflow-hidden rounded-md border border-[#1e293b] bg-[#0f172a]"
+            className="w-full overflow-x-auto rounded-lg border border-slate-800 bg-[#0f172a]"
           >
-            <canvas ref={canvasRef} className="block w-full" />
+            <canvas ref={canvasRef} className="block" />
           </div>
+          {drawWidth > containerW && (
+            <div className="text-right text-[11px] text-[#6E6E73]">
+              左右にスワイプして全体を表示できます
+            </div>
+          )}
         </div>
       )}
     </div>

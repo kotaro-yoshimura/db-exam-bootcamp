@@ -1,7 +1,8 @@
-// 画面下部固定ナビゲーションバー（絵文字なし・フラットな設計ツール風タブ）
-// メインコンテナ側で必ず pb-36 を確保して重なりを100%防止する
+// iPhone幅（md未満）専用のiOS標準アプリ風すりガラス下部タブバー
+// 英語や番号は一切付けず、折り返さない短い日本語ラベルと極細線画アイコンのみで構成
 import React from 'react';
 import type { ModuleId } from '../../types/exam';
+import { ModuleNavIcon } from './NavIcons';
 
 interface Props {
   activeModule: ModuleId;
@@ -9,13 +10,13 @@ interface Props {
   activeWeakCount: number;
 }
 
-const NAV_ITEMS: Array<{ id: ModuleId; code: string; label: string }> = [
-  { id: 'home', code: 'TOP', label: 'ホーム' },
-  { id: 'lab', code: '01', label: '図解ラボ' },
-  { id: 'sql', code: '02', label: 'SQL道場' },
-  { id: 'cbt', code: '03', label: 'CBT演習' },
-  { id: 'review', code: '04', label: '弱点復習' },
-  { id: 'roadmap', code: '05', label: '行程200' },
+const TAB_ITEMS: Array<{ id: ModuleId; label: string }> = [
+  { id: 'home', label: 'ホーム' },
+  { id: 'lab', label: '図解' },
+  { id: 'sql', label: 'SQL' },
+  { id: 'cbt', label: 'CBT' },
+  { id: 'review', label: '弱点' },
+  { id: 'roadmap', label: '200語' },
 ];
 
 export const BottomNav: React.FC<Props> = ({
@@ -25,36 +26,29 @@ export const BottomNav: React.FC<Props> = ({
 }) => {
   return (
     <nav
-      aria-label="メインナビゲーション"
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#e4e4e0] bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+      aria-label="メインタブバー"
+      className="fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-slate-200 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:hidden"
     >
-      <div className="mx-auto grid max-w-4xl grid-cols-6 gap-1 px-2 py-1.5">
-        {NAV_ITEMS.map((item) => {
+      <div className="grid grid-cols-6 px-1 pt-1.5 pb-1">
+        {TAB_ITEMS.map((item) => {
           const active = activeModule === item.id;
           return (
             <button
               key={item.id}
               type="button"
               onClick={() => onSelectModule(item.id)}
-              className={`relative flex flex-col items-center justify-center rounded-md py-1.5 px-1 transition ${
-                active
-                  ? 'bg-[#18181b] text-white'
-                  : 'text-[#52525b] hover:bg-[#f1f1ee] hover:text-[#18181b]'
+              aria-current={active ? 'page' : undefined}
+              className={`relative flex flex-col items-center justify-center gap-0.5 rounded-lg py-1 transition ${
+                active ? 'text-[#007AFF]' : 'text-[#6E6E73] active:text-[#1D1D1F]'
               }`}
             >
-              <span
-                className={`font-mono text-[10px] leading-none ${
-                  active ? 'text-[#a1a1aa]' : 'text-[#a1a1aa]'
-                }`}
-              >
-                {item.code}
-              </span>
-              <span className="mt-1 text-[11px] font-semibold leading-tight truncate max-w-full">
+              <ModuleNavIcon id={item.id} className="h-[20px] w-[20px] shrink-0" />
+              <span className="whitespace-nowrap text-[10px] font-medium leading-tight tracking-tight">
                 {item.label}
               </span>
               {item.id === 'review' && activeWeakCount > 0 && (
-                <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#be123c] px-1 font-mono text-[9px] font-bold text-white">
-                  {activeWeakCount}
+                <span className="absolute right-1.5 top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#007AFF] px-1 font-mono text-[9px] font-bold tabular-nums text-white">
+                  {activeWeakCount > 99 ? '99+' : activeWeakCount}
                 </span>
               )}
             </button>

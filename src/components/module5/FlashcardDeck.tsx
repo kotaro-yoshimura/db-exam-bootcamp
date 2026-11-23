@@ -1,4 +1,4 @@
-// モジュール5後半：合格教本9章・重要語句200フラッシュカード（紙の単語帳・インデックスカード調）
+// モジュール5後半：合格教本9章・重要語句200フラッシュカード（Apple HIG ニュートラルUI）
 import React, { useState, useMemo } from 'react';
 import { FLASHCARDS_200, CHAPTER_TITLES } from '../../data/flashcards200';
 import type { CardStatus } from '../../types/exam';
@@ -72,23 +72,23 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
   return (
     <div className="space-y-4">
       {/* サマリー＆フィルタ */}
-      <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
-            <span className="font-bold text-[#18181b]">全収録 {FLASHCARDS_200.length}語</span>
-            <span className="text-[#15803d] font-semibold">習得済 {masteredCount}</span>
-            <span className="text-[#be123c] font-semibold">要復習 {reviewCount}</span>
-            <span className="text-[#71717a]">
+          <div className="flex flex-wrap items-center gap-3 font-mono text-xs tabular-nums">
+            <span className="font-bold text-[#1D1D1F]">全収録 {FLASHCARDS_200.length}語</span>
+            <span className="text-[#1D1D1F]">習得済 {masteredCount}</span>
+            <span className="text-[#6E6E73]">要復習 {reviewCount}</span>
+            <span className="text-[#6E6E73]">
               未学習 {FLASHCARDS_200.length - masteredCount - reviewCount}
             </span>
           </div>
 
-          <div className="inline-flex rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('deck')}
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                viewMode === 'deck' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                viewMode === 'deck' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
               単語カード
@@ -96,15 +96,16 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                viewMode === 'list' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                viewMode === 'list' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
-              一覧表 ({filteredCards.length})
+              一覧表 (<span className="font-mono tabular-nums">{filteredCards.length}</span>)
             </button>
           </div>
         </div>
 
+        {/* 入力・セレクト類はすべて text-base md:text-sm（iPhoneズーム防止） */}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <select
             value={chapterFilter}
@@ -113,7 +114,7 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
               setCardIdx(0);
               setFlipped(false);
             }}
-            className="rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1.5 text-xs text-[#18181b] lg:col-span-2"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-base md:text-sm text-[#1D1D1F] lg:col-span-2"
           >
             <option value={0}>全9章（200語すべて）</option>
             {(Object.keys(CHAPTER_TITLES) as unknown as Array<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>).map(
@@ -132,7 +133,7 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
               setCardIdx(0);
               setFlipped(false);
             }}
-            className="rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1.5 text-xs text-[#18181b]"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-base md:text-sm text-[#1D1D1F]"
           >
             <option value="all">状態：すべて</option>
             <option value="unseen">未学習のみ</option>
@@ -147,7 +148,7 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
               setCardIdx(0);
               setFlipped(false);
             }}
-            className="rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1.5 text-xs text-[#18181b]"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-base md:text-sm text-[#1D1D1F]"
           >
             <option value="all">重要度：すべて</option>
             <option value="A">重要度A（頻出）</option>
@@ -164,7 +165,7 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
                 setCardIdx(0);
               }}
               placeholder="語句を検索..."
-              className="w-full rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1.5 text-xs text-[#18181b]"
+              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-base md:text-sm text-[#1D1D1F] focus:border-[#007AFF] focus:outline-none"
             />
             <button
               type="button"
@@ -173,10 +174,10 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
                 setCardIdx(0);
                 setFlipped(false);
               }}
-              className={`shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-semibold ${
+              className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
                 shuffleSeed !== 0
-                  ? 'border-[#18181b] bg-[#18181b] text-white'
-                  : 'border-[#d4d4d0] bg-white text-[#52525b]'
+                  ? 'border-[#007AFF] bg-[#007AFF] text-white'
+                  : 'border-slate-200 bg-white text-[#6E6E73] hover:text-[#1D1D1F]'
               }`}
             >
               順不同
@@ -185,12 +186,12 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
         </div>
       </div>
 
-      {/* 単語カード暗記モード（紙のインデックスカード風） */}
+      {/* 単語カード暗記モード */}
       {viewMode === 'deck' ? (
         currentCard ? (
           <div className="mx-auto max-w-2xl space-y-4">
-            <div className="flex items-center justify-between text-xs text-[#71717a]">
-              <span className="font-mono">
+            <div className="flex items-center justify-between text-xs text-[#6E6E73]">
+              <span className="font-mono tabular-nums">
                 {safeIdx + 1} / {filteredCards.length}（{currentCard.id}）
               </span>
               <span>カードをタップして裏面を表示</span>
@@ -204,37 +205,29 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
                 className={`card-inner relative min-h-[280px] w-full ${flipped ? 'is-flipped' : ''}`}
               >
                 {/* 表面 */}
-                <div className="card-face absolute inset-0 flex flex-col justify-between rounded-lg border border-[#d4d4d0] bg-white p-6 shadow-xs">
-                  <div className="flex items-center justify-between gap-2 border-b border-[#e4e4e0] pb-2.5">
-                    <span className="text-xs font-semibold text-[#52525b]">
+                <div className="card-face absolute inset-0 flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-6 shadow-xs">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                    <span className="text-xs font-semibold text-[#6E6E73]">
                       {currentCard.chapterTitle}
                     </span>
-                    <span
-                      className={`rounded border px-2 py-0.5 font-mono text-[11px] font-bold ${
-                        currentCard.importance === 'A'
-                          ? 'border-[#fecdd3] bg-[#fff1f2] text-[#be123c]'
-                          : currentCard.importance === 'B'
-                            ? 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]'
-                            : 'border-[#e4e4e0] bg-[#f6f6f4] text-[#52525b]'
-                      }`}
-                    >
+                    <span className="rounded-md border border-slate-200 bg-[#F5F5F7] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#1D1D1F]">
                       重要度 {currentCard.importance}
                     </span>
                   </div>
 
                   <div className="my-auto py-6 text-center space-y-2">
-                    <div className="text-2xl sm:text-3xl font-bold tracking-tight text-[#18181b] leading-snug">
+                    <div className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1D1D1F] leading-snug">
                       {currentCard.term}
                     </div>
                     {currentCard.reading && (
-                      <div className="font-mono text-xs text-[#71717a]">{currentCard.reading}</div>
+                      <div className="font-mono text-xs text-[#6E6E73]">{currentCard.reading}</div>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-[#f1f1ee] pt-2.5 text-xs text-[#71717a]">
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs text-[#6E6E73]">
                     <span>
                       状態：
-                      <strong className="ml-1 text-[#18181b]">
+                      <strong className="ml-1 text-[#1D1D1F]">
                         {store.state.flashcardStatus[currentCard.id] === 'mastered'
                           ? '習得済'
                           : store.state.flashcardStatus[currentCard.id] === 'review'
@@ -242,33 +235,33 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
                             : '未学習'}
                       </strong>
                     </span>
-                    <span className="font-semibold text-[#18181b]">タップして解説を見る</span>
+                    <span className="font-semibold text-[#007AFF]">タップして解説を見る</span>
                   </div>
                 </div>
 
                 {/* 裏面 */}
-                <div className="card-face card-face-back absolute inset-0 flex flex-col justify-between rounded-lg border border-[#18181b] bg-[#fafafa] p-6 shadow-xs">
-                  <div className="flex items-center justify-between gap-2 border-b border-[#e4e4e0] pb-2.5">
-                    <span className="text-sm font-bold text-[#18181b]">{currentCard.term}</span>
-                    <span className="font-mono text-[11px] text-[#71717a]">解説</span>
+                <div className="card-face card-face-back absolute inset-0 flex flex-col justify-between rounded-lg border border-[#007AFF] bg-white p-6 shadow-xs">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                    <span className="text-sm font-bold text-[#1D1D1F]">{currentCard.term}</span>
+                    <span className="font-mono text-[11px] text-[#6E6E73]">解説</span>
                   </div>
 
                   <div className="my-auto space-y-3 py-2">
                     <div>
-                      <div className="text-[11px] font-bold text-[#71717a]">定義・仕組み</div>
-                      <p className="mt-1 text-sm text-[#18181b] leading-relaxed">
+                      <div className="text-[11px] font-bold text-[#6E6E73]">定義・仕組み</div>
+                      <p className="mt-1 text-sm text-[#1D1D1F] leading-relaxed">
                         {currentCard.definition}
                       </p>
                     </div>
-                    <div className="rounded-md border border-[#fde68a] bg-[#fffbeb] p-3">
-                      <div className="text-[11px] font-bold text-[#92400e]">午後試験のポイント</div>
-                      <p className="mt-1 text-xs sm:text-sm text-[#78350f] leading-relaxed">
+                    <div className="rounded-lg border border-sky-200 bg-sky-50/70 p-3">
+                      <div className="text-[11px] font-bold text-[#007AFF]">午後試験のポイント</div>
+                      <p className="mt-1 text-xs sm:text-sm text-[#1D1D1F] leading-relaxed">
                         {currentCard.examPoint}
                       </p>
                     </div>
                   </div>
 
-                  <div className="border-t border-[#e4e4e0] pt-2 text-right text-xs text-[#71717a]">
+                  <div className="border-t border-slate-200 pt-2 text-right text-xs text-[#6E6E73]">
                     タップして表面へ戻る
                   </div>
                 </div>
@@ -282,21 +275,21 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
                   setFlipped(false);
                   setCardIdx((safeIdx - 1 + filteredCards.length) % filteredCards.length);
                 }}
-                className="rounded-md border border-[#d4d4d0] bg-white py-2.5 text-xs font-semibold text-[#18181b] hover:bg-[#f1f1ee]"
+                className="rounded-lg border border-slate-200 bg-white py-2.5 text-xs font-semibold text-[#1D1D1F] hover:bg-[#F5F5F7]"
               >
                 ← 前へ
               </button>
               <button
                 type="button"
                 onClick={() => handleMarkStatus('review')}
-                className="rounded-md border border-[#fecdd3] bg-[#fff1f2] py-2.5 text-xs font-bold text-[#be123c] hover:bg-[#ffe4e6]"
+                className="rounded-lg border border-red-200 bg-red-50 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100/70"
               >
                 要復習
               </button>
               <button
                 type="button"
                 onClick={() => handleMarkStatus('mastered')}
-                className="rounded-md border border-[#bbf7d0] bg-[#f0fdf4] py-2.5 text-xs font-bold text-[#15803d] hover:bg-[#dcfce7]"
+                className="rounded-lg bg-[#007AFF] py-2.5 text-xs font-bold text-white hover:bg-[#0066D6]"
               >
                 習得済
               </button>
@@ -306,14 +299,14 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
                   setFlipped(false);
                   setCardIdx((safeIdx + 1) % filteredCards.length);
                 }}
-                className="rounded-md border border-[#d4d4d0] bg-white py-2.5 text-xs font-semibold text-[#18181b] hover:bg-[#f1f1ee]"
+                className="rounded-lg border border-slate-200 bg-white py-2.5 text-xs font-semibold text-[#1D1D1F] hover:bg-[#F5F5F7]"
               >
                 次へ →
               </button>
             </div>
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-[#d4d4d0] bg-white p-8 text-center text-sm text-[#71717a]">
+          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-[#6E6E73]">
             条件に一致する重要語句がありません。フィルタを調整してください。
           </div>
         )
@@ -324,42 +317,47 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
             return (
               <div
                 key={c.id}
-                className="rounded-lg border border-[#e4e4e0] bg-white p-3.5 space-y-2"
+                className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-2"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="font-mono text-[10px] font-semibold text-[#71717a]">
+                    <span className="font-mono text-[10px] font-semibold tabular-nums text-[#6E6E73]">
                       第{c.chapter}章 ・ 重要度{c.importance}
                     </span>
-                    <div className="text-sm font-bold text-[#18181b]">{c.term}</div>
+                    <div className="text-sm font-bold text-[#1D1D1F]">{c.term}</div>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <button
                       type="button"
                       onClick={() => store.setFlashcardStatus(c.id, st === 'review' ? 'unseen' : 'review')}
-                      className={`rounded border px-2 py-0.5 text-[10px] font-semibold ${
+                      className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
                         st === 'review'
-                          ? 'border-[#be123c] bg-[#be123c] text-white'
-                          : 'border-[#d4d4d0] bg-white text-[#52525b]'
+                          ? 'border-red-600 bg-red-600 text-white'
+                          : 'border-slate-200 bg-white text-[#6E6E73]'
                       }`}
                     >
                       要復習
                     </button>
                     <button
                       type="button"
-                      onClick={() => store.setFlashcardStatus(c.id, st === 'mastered' ? 'unseen' : 'mastered')}
-                      className={`rounded border px-2 py-0.5 text-[10px] font-semibold ${
+                      onClick={() =>
+                        store.setFlashcardStatus(c.id, st === 'mastered' ? 'unseen' : 'mastered')
+                      }
+                      className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
                         st === 'mastered'
-                          ? 'border-[#15803d] bg-[#15803d] text-white'
-                          : 'border-[#d4d4d0] bg-white text-[#52525b]'
+                          ? 'border-[#007AFF] bg-[#007AFF] text-white'
+                          : 'border-slate-200 bg-white text-[#6E6E73]'
                       }`}
                     >
                       習得済
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-[#3f3f46] leading-relaxed">{c.definition}</p>
-                <p className="text-[11px] text-[#92400e] leading-relaxed">要点：{c.examPoint}</p>
+                <p className="text-xs text-[#1D1D1F]/85 leading-relaxed">{c.definition}</p>
+                <p className="text-[11px] text-[#6E6E73] leading-relaxed">
+                  <span className="font-semibold text-[#007AFF]">要点：</span>
+                  {c.examPoint}
+                </p>
               </div>
             );
           })}

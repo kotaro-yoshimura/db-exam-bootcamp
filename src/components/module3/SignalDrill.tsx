@@ -59,32 +59,32 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
   const perfect = checked && hitCount === trueSignals.length && wrongCount === 0;
 
   return (
-    <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f1f1ee] pb-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <div>
-          <div className="text-xs font-bold text-[#18181b]">本文シグナル発掘ドリル</div>
-          <p className="mt-0.5 text-xs text-[#52525b]">{exam.signalDrill.instruction}</p>
+          <div className="text-xs font-bold text-[#1D1D1F]">本文シグナル発掘ドリル</div>
+          <p className="mt-0.5 text-xs text-[#6E6E73]">{exam.signalDrill.instruction}</p>
         </div>
-        <span className="font-mono text-xs text-[#71717a]">
+        <span className="font-mono text-xs tabular-nums text-[#6E6E73]">
           対象：{trueSignals.length}箇所 ／ 選択中：{selectedIds.length}箇所
         </span>
       </div>
 
       {/* タップ可能な本文エリア */}
-      <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-4 leading-8 text-sm">
+      <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-4 leading-8 text-sm">
         {segments.map((seg) => {
           const picked = selectedIds.includes(seg.id);
-          let style = 'text-[#18181b] hover:bg-[#e4e4e0] border-transparent';
+          let style = 'text-[#1D1D1F] hover:bg-slate-200/70 border-transparent';
 
           if (!checked && picked) {
-            style = 'bg-[#eff6ff] text-[#1d4ed8] border-[#1d4ed8] font-bold';
+            style = 'bg-sky-50 text-[#007AFF] border-[#007AFF] font-bold';
           } else if (checked) {
             if (seg.isSignal && picked) {
-              style = 'bg-[#f0fdf4] text-[#15803d] border-[#15803d] font-bold';
+              style = 'bg-emerald-50 text-emerald-700 border-emerald-600 font-bold';
             } else if (seg.isSignal && !picked) {
-              style = 'bg-[#fffbeb] text-[#b45309] border-[#b45309] font-bold';
+              style = 'bg-amber-50 text-amber-800 border-amber-500 font-bold';
             } else if (!seg.isSignal && picked) {
-              style = 'bg-[#fff1f2] text-[#be123c] border-[#be123c] line-through';
+              style = 'bg-red-50 text-red-700 border-red-500 line-through';
             }
           }
 
@@ -93,7 +93,7 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
               key={seg.id}
               type="button"
               onClick={() => toggleSegment(seg.id)}
-              className={`mr-1 mb-1 inline rounded border px-1.5 py-0.5 text-left transition ${style}`}
+              className={`mr-1 mb-1 inline rounded-md border px-1.5 py-0.5 text-left transition ${style}`}
             >
               {seg.text}
             </button>
@@ -106,7 +106,7 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
           type="button"
           onClick={handleGrade}
           disabled={checked}
-          className="rounded-md bg-[#18181b] px-4 py-2 text-xs font-semibold text-white hover:bg-[#27272a] disabled:opacity-50"
+          className="rounded-lg bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0066D6] disabled:opacity-50 transition"
         >
           発掘結果を採点する
         </button>
@@ -116,7 +116,7 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
             setSelectedIds([]);
             setChecked(false);
           }}
-          className="rounded-md border border-[#d4d4d0] bg-white px-3.5 py-2 text-xs font-semibold text-[#52525b] hover:bg-[#f1f1ee]"
+          className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7]"
         >
           やり直す
         </button>
@@ -125,10 +125,10 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
       {checked && (
         <div className="space-y-2.5">
           <div
-            className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+            className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
               perfect
-                ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'
-                : 'border-[#fecdd3] bg-[#fff1f2] text-[#9f1239]'
+                ? 'border-sky-200 bg-sky-50 text-[#007AFF]'
+                : 'border-red-200 bg-red-50 text-red-700'
             }`}
           >
             {perfect
@@ -142,24 +142,24 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
               return (
                 <div
                   key={sig.id}
-                  className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-3 text-xs space-y-1"
+                  className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3 text-xs space-y-1"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className={`rounded px-1.5 py-0.5 font-semibold ${
+                      className={`rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${
                         found
-                          ? 'bg-[#f0fdf4] text-[#15803d] border border-[#bbf7d0]'
-                          : 'bg-[#fffbeb] text-[#b45309] border border-[#fde68a]'
+                          ? 'border-sky-200 bg-sky-50 text-[#007AFF]'
+                          : 'border-amber-200 bg-amber-50 text-amber-800'
                       }`}
                     >
                       {found ? '発掘済' : '見逃し'}
                     </span>
-                    <span className="font-mono text-[11px] font-semibold text-[#1d4ed8]">
+                    <span className="font-mono text-[11px] font-semibold text-[#6E6E73]">
                       [{sig.signalKind}]
                     </span>
-                    <span className="font-bold text-[#18181b]">「{sig.text}」</span>
+                    <span className="font-bold text-[#1D1D1F]">「{sig.text}」</span>
                   </div>
-                  <p className="text-[#3f3f46] leading-relaxed">{sig.explanation}</p>
+                  <p className="text-[#1D1D1F]/85 leading-relaxed">{sig.explanation}</p>
                 </div>
               );
             })}

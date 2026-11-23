@@ -1,4 +1,5 @@
 // シミュレーター②：ウィンドウ関数スライサー ＆ 再帰SQL展開 ＆ 排他制御・デッドロック・2相コミット(2PC) vs 補償TX(Saga)
+// iPhone小画面（420px未満）では横スクロールコンテナ内でフォント・パディングを最適化し潰れを防止
 import React, { useState, useEffect, useRef } from 'react';
 import { WINDOW_VISUALIZER_ROWS } from '../../data/sqlDrills';
 import {
@@ -13,6 +14,7 @@ import {
   drawCanvasGrid,
   drawFittedText,
 } from '../../utils/canvasHelpers';
+import { useCanvasContainerWidth } from '../../utils/useCanvasWidth';
 
 type SubSimTab = 'window' | 'recursive' | 'tx';
 type FrameMode = 'ROWS' | 'RANGE';
@@ -83,7 +85,6 @@ const BOM_STEPS = [
 
 export const SqlTxSim: React.FC = () => {
   const [subTab, setSubTab] = useState<SubSimTab>('window');
-  const [canvasTick, setCanvasTick] = useState(0);
 
   // ウィンドウ関数スライサー状態
   const [usePartition, setUsePartition] = useState(true);
@@ -102,12 +103,12 @@ export const SqlTxSim: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerW = useCanvasContainerWidth(containerRef, 360);
 
-  useEffect(() => {
-    const onResize = () => setCanvasTick((t) => t + 1);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  const isCompact = containerW < 420;
+  const minWidthForTab =
+    subTab === 'window' ? 540 : subTab === 'recursive' ? 620 : 580;
+  const drawWidth = Math.max(containerW, isCompact ? minWidthForTab : 320);
 
   // ウィンドウ関数のフレーム対象行インデックスを計算
   const computeFrameIndices = (targetIdx: number): number[] => {
@@ -119,10 +120,12 @@ export const SqlTxSim: React.FC = () => {
 
     if (frameMode === 'ROWS') {
       const startPos = preceding < 0 ? 0 : Math.max(0, posInPart - preceding);
-      const endPos = following >= 99 ? partRows.length - 1 : Math.min(partRows.length - 1, posInPart + following);
+      const endPos =
+        following >= 99
+          ? partRows.length - 1
+          : Math.min(partRows.length - 1, posInPart + following);
       return partRows.slice(startPos, endPos + 1).map((r) => r.rowIdx);
     }
-    // RANGE モード：orderVal の値範囲で判定（同値タイをすべて含む！）
     const minVal = preceding < 0 ? -Infinity : target.orderVal - preceding;
     const maxVal = following >= 99 ? Infinity : target.orderVal + following;
     return partRows
@@ -163,13 +166,12 @@ export const SqlTxSim: React.FC = () => {
   // HTML5 Canvas 統合描画
   useEffect(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
-    const width = Math.max(320, container.clientWidth);
+    const width = drawWidth;
 
     if (subTab === 'window') {
-      const height = 390;
+      const height = isCompact ? 372 : 390;
       const ctx = setupHiDpiCanvas(canvas, width, height);
       if (!ctx) return;
       drawCanvasGrid(ctx, width, height, 24);
@@ -177,20 +179,20 @@ export const SqlTxSim: React.FC = () => {
       const frameSet = new Set(computeFrameIndices(currentRowIdx));
       const curRow = WINDOW_VISUALIZER_ROWS[currentRowIdx];
 
-      // ヘッダ
       ctx.fillStyle = CANVAS_COLORS.textMain;
-      ctx.font = `700 13px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `700 ${isCompact ? 11 : 13}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(
+      drawFittedText(
+        ctx,
         `ウィンドウ関数フレーム可視化 — 現在行 #${currentRowIdx + 1} (${curRow.partition} / ${curRow.orderLabel})`,
-        14,
-        22
+        12,
+        21,
+        width - 24
       );
 
-      // テーブルヘッダ描画
-      const startY = 46;
-      const rowH = 36;
+      const startY = 44;
+      const rowH = isCompact ? 34 : 36;
       const colWidths = [
         width * 0.1,
         width * 0.18,
@@ -202,19 +204,18 @@ export const SqlTxSim: React.FC = () => {
       const headers = ['行#', '部門', '売上日(ORDER)', '売上額', 'フレーム状態', `${winFunc}結果`];
 
       let cx = 10;
-      drawRoundedRect(ctx, 10, startY, width - 20, 28, 6, CANVAS_COLORS.bgPanel, CANVAS_COLORS.border, 1);
-      ctx.font = `700 11px ${CANVAS_FONT_FAMILY}`;
+      drawRoundedRect(ctx, 10, startY, width - 20, 26, 6, CANVAS_COLORS.bgPanel, CANVAS_COLORS.border, 1);
+      ctx.font = `700 ${isCompact ? 10 : 11}px ${CANVAS_FONT_FAMILY}`;
       ctx.fillStyle = CANVAS_COLORS.textSub;
       ctx.textAlign = 'center';
       headers.forEach((h, i) => {
         const w = (colWidths[i] / width) * (width - 20);
-        drawFittedText(ctx, h, cx + w / 2, startY + 14, w - 6);
+        drawFittedText(ctx, h, cx + w / 2, startY + 13, w - 6);
         cx += w;
       });
 
-      // 行描画
       WINDOW_VISUALIZER_ROWS.forEach((row, i) => {
-        const y = startY + 34 + i * rowH;
+        const y = startY + 32 + i * rowH;
         const inSamePart = !usePartition || row.partition === curRow.partition;
         const inFrame = frameSet.has(i);
         const isCurrent = i === currentRowIdx;
@@ -232,7 +233,7 @@ export const SqlTxSim: React.FC = () => {
           stroke = '#0369a1';
         }
 
-        drawRoundedRect(ctx, 10, y, width - 20, rowH - 5, 7, bg, stroke, isCurrent ? 2.2 : 1.2);
+        drawRoundedRect(ctx, 10, y, width - 20, rowH - 5, 7, bg, stroke, isCurrent ? 2 : 1.2);
 
         const cells = [
           `#${i + 1}`,
@@ -248,8 +249,8 @@ export const SqlTxSim: React.FC = () => {
           const w = (colWidths[ci] / width) * (width - 20);
           ctx.font =
             ci === 5 || isCurrent
-              ? `700 12px ${CANVAS_MONO_FAMILY}`
-              : `500 11px ${CANVAS_FONT_FAMILY}`;
+              ? `700 ${isCompact ? 11 : 12}px ${CANVAS_MONO_FAMILY}`
+              : `500 ${isCompact ? 10 : 11}px ${CANVAS_FONT_FAMILY}`;
           ctx.fillStyle =
             ci === 5
               ? isCurrent
@@ -267,17 +268,16 @@ export const SqlTxSim: React.FC = () => {
         });
       });
 
-      // 最下部に計算式のライブ表示
       const frameAmounts = Array.from(frameSet).map((i) => WINDOW_VISUALIZER_ROWS[i].amount);
-      const formulaY = startY + 34 + WINDOW_VISUALIZER_ROWS.length * rowH + 14;
+      const formulaY = startY + 32 + WINDOW_VISUALIZER_ROWS.length * rowH + 14;
       ctx.textAlign = 'left';
-      ctx.font = `700 12px ${CANVAS_MONO_FAMILY}`;
+      ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_MONO_FAMILY}`;
       ctx.fillStyle = CANVAS_COLORS.emerald;
       const formulaText =
         winFunc === 'SUM' || winFunc === 'AVG'
           ? `現在フレーム(${frameMode}): [${frameAmounts.join(' + ')}] → ${winFunc} = ${computeWinValue(currentRowIdx)}`
           : `順位/参照関数 ${winFunc} (現在行 #${currentRowIdx + 1}) → ${computeWinValue(currentRowIdx)}`;
-      drawFittedText(ctx, formulaText, 14, formulaY, width - 28);
+      drawFittedText(ctx, formulaText, 12, formulaY, width - 24);
       return;
     }
 
@@ -289,13 +289,12 @@ export const SqlTxSim: React.FC = () => {
 
       const stepInfo = BOM_STEPS[recStep];
       ctx.fillStyle = CANVAS_COLORS.textMain;
-      ctx.font = `700 13px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `700 ${isCompact ? 11 : 13}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`WITH RECURSIVE 部品表(BOM)展開 — ${stepInfo.title}`, 14, 22);
+      drawFittedText(ctx, `WITH RECURSIVE 部品表(BOM)展開 — ${stepInfo.title}`, 12, 21, width - 24);
 
-      // 左半分に有向グラフ、右半分にワーキング/結果テーブルを描画
-      const splitX = width >= 620 ? width * 0.52 : width;
+      const splitX = width * 0.5;
       const nodes: Record<string, { x: number; y: number; step: number }> = {
         P100: { x: splitX * 0.5, y: 74, step: 0 },
         A10: { x: splitX * 0.27, y: 150, step: 1 },
@@ -305,7 +304,6 @@ export const SqlTxSim: React.FC = () => {
         D99: { x: splitX * 0.22, y: 316, step: 3 },
       };
 
-      // エッジ描画
       BOM_EDGES.forEach((e) => {
         const p = nodes[e.parent];
         const c = nodes[e.child];
@@ -316,7 +314,7 @@ export const SqlTxSim: React.FC = () => {
           : active
             ? CANVAS_COLORS.emerald
             : CANVAS_COLORS.borderLight;
-        drawArrow(ctx, p.x, p.y + 18, c.x, c.y - 20, color, isCurrentStep ? 2.8 : 1.8, !active, 8);
+        drawArrow(ctx, p.x, p.y + 18, c.x, c.y - 20, color, isCurrentStep ? 2.6 : 1.7, !active, 8);
         drawPillBadge(
           ctx,
           `×${e.qty}`,
@@ -329,7 +327,6 @@ export const SqlTxSim: React.FC = () => {
         );
       });
 
-      // ノード描画
       Object.entries(nodes).forEach(([id, pos]) => {
         const active = pos.step <= recStep;
         const isNew = pos.step === recStep;
@@ -349,49 +346,47 @@ export const SqlTxSim: React.FC = () => {
               : active
                 ? CANVAS_COLORS.emerald
                 : CANVAS_COLORS.border;
-        drawRoundedRect(ctx, pos.x - 36, pos.y - 18, 72, 36, 8, bg, stroke, isNew ? 2.4 : 1.6);
+        drawRoundedRect(ctx, pos.x - 34, pos.y - 17, 68, 34, 8, bg, stroke, isNew ? 2.2 : 1.5);
         ctx.fillStyle = CANVAS_COLORS.textMain;
-        ctx.font = `700 12px ${CANVAS_MONO_FAMILY}`;
+        ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_MONO_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(id, pos.x, pos.y);
       });
 
-      // 右側：累積結果テーブル（幅がある場合）
-      if (width >= 620) {
-        const panelX = splitX + 12;
-        const panelW = width - panelX - 14;
-        drawRoundedRect(ctx, panelX, 46, panelW, 294, 10, CANVAS_COLORS.bgPanel, CANVAS_COLORS.border, 1.5);
-        ctx.fillStyle = CANVAS_COLORS.cyan;
-        ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
-        ctx.textAlign = 'left';
-        ctx.fillText(`累積結果テーブル (${stepInfo.accumulated.length}行)`, panelX + 12, 68);
+      // 右側：累積結果テーブル（横スクロール確保により小画面でも常時描画）
+      const panelX = splitX + 10;
+      const panelW = width - panelX - 12;
+      drawRoundedRect(ctx, panelX, 46, panelW, 294, 8, CANVAS_COLORS.bgPanel, CANVAS_COLORS.border, 1.4);
+      ctx.fillStyle = CANVAS_COLORS.cyan;
+      ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_FONT_FAMILY}`;
+      ctx.textAlign = 'left';
+      ctx.fillText(`累積結果テーブル (${stepInfo.accumulated.length}行)`, panelX + 12, 66);
 
-        stepInfo.accumulated.forEach((row, idx) => {
-          const ry = 92 + idx * 36;
-          const isLatest = row.lvl === recStep;
-          drawRoundedRect(
-            ctx,
-            panelX + 10,
-            ry,
-            panelW - 20,
-            30,
-            6,
-            isLatest ? CANVAS_COLORS.amberSoft : CANVAS_COLORS.bgDarker,
-            isLatest ? CANVAS_COLORS.amber : CANVAS_COLORS.border,
-            1.2
-          );
-          ctx.fillStyle = isLatest ? '#fde68a' : CANVAS_COLORS.textMain;
-          ctx.font = `600 11px ${CANVAS_MONO_FAMILY}`;
-          drawFittedText(
-            ctx,
-            `lvl=${row.lvl} | ${row.part} | 計=${row.qty} (${row.path})`,
-            panelX + 18,
-            ry + 15,
-            panelW - 36
-          );
-        });
-      }
+      stepInfo.accumulated.forEach((row, idx) => {
+        const ry = 88 + idx * 36;
+        const isLatest = row.lvl === recStep;
+        drawRoundedRect(
+          ctx,
+          panelX + 10,
+          ry,
+          panelW - 20,
+          30,
+          6,
+          isLatest ? CANVAS_COLORS.amberSoft : CANVAS_COLORS.bgDarker,
+          isLatest ? CANVAS_COLORS.amber : CANVAS_COLORS.border,
+          1.2
+        );
+        ctx.fillStyle = isLatest ? '#fde68a' : CANVAS_COLORS.textMain;
+        ctx.font = `600 ${isCompact ? 10 : 11}px ${CANVAS_MONO_FAMILY}`;
+        drawFittedText(
+          ctx,
+          `lvl=${row.lvl} | ${row.part} | 計=${row.qty} (${row.path})`,
+          panelX + 16,
+          ry + 15,
+          panelW - 32
+        );
+      });
       return;
     }
 
@@ -404,23 +399,23 @@ export const SqlTxSim: React.FC = () => {
     if (txScenario === 'deadlock' || txScenario === 'ordered') {
       const isDeadlock = txScenario === 'deadlock';
       ctx.fillStyle = CANVAS_COLORS.textMain;
-      ctx.font = `700 13px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `700 ${isCompact ? 11 : 13}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(
+      drawFittedText(
+        ctx,
         isDeadlock
           ? 'R5秋 再現：逆順排他ロックによるデッドロック ＆ 待ちグラフ循環検出'
           : 'R5秋 対策：倉庫コード昇順（A→B統一）ロック獲得によるデッドロック完全回避',
-        14,
-        22
+        12,
+        21,
+        width - 24
       );
 
-      // 上段：T1 / T2 タイムライン
-      const laneX = 86;
-      const laneW = width - laneX - 24;
+      const laneX = 82;
+      const laneW = width - laneX - 18;
       const stepW = laneW / 5;
 
-      // 時間軸グリッド t1..t5
       for (let t = 1; t <= 5; t++) {
         const tx = laneX + (t - 0.5) * stepW;
         ctx.fillStyle = t <= txStep ? CANVAS_COLORS.cyan : CANVAS_COLORS.textMuted;
@@ -441,16 +436,16 @@ export const SqlTxSim: React.FC = () => {
         events: Array<{ t: number; text: string; color: string; bg: string }>
       ) => {
         ctx.fillStyle = CANVAS_COLORS.textMain;
-        ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
+        ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_FONT_FAMILY}`;
         ctx.textAlign = 'left';
-        ctx.fillText(label, 14, y + 20);
+        ctx.fillText(label, 12, y + 20);
         drawRoundedRect(ctx, laneX, y, laneW, 42, 8, CANVAS_COLORS.bgPanel, CANVAS_COLORS.border, 1);
 
         events.forEach((ev) => {
           if (ev.t > txStep) return;
           const bx = laneX + (ev.t - 1) * stepW + 4;
           const bw = stepW - 8;
-          drawRoundedRect(ctx, bx, y + 5, bw, 32, 6, ev.bg, ev.color, 1.6);
+          drawRoundedRect(ctx, bx, y + 5, bw, 32, 6, ev.bg, ev.color, 1.5);
           ctx.fillStyle = CANVAS_COLORS.textMain;
           ctx.font = `700 10px ${CANVAS_FONT_FAMILY}`;
           ctx.textAlign = 'center';
@@ -488,53 +483,51 @@ export const SqlTxSim: React.FC = () => {
         ]);
       }
 
-      // 下段：待ちグラフ（Wait-For Graph）
       const wgY = 216;
-      drawRoundedRect(ctx, 14, wgY, width - 28, 146, 12, CANVAS_COLORS.bgPanel, CANVAS_COLORS.border, 1.5);
+      drawRoundedRect(ctx, 12, wgY, width - 24, 146, 10, CANVAS_COLORS.bgPanel, CANVAS_COLORS.border, 1.4);
       ctx.fillStyle = CANVAS_COLORS.textMain;
-      ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'left';
-      ctx.fillText('待ちグラフ（Wait-For Graph）リアルタイム状態', 28, wgY + 22);
+      ctx.fillText('待ちグラフ（Wait-For Graph）リアルタイム状態', 24, wgY + 22);
 
-      const t1x = width * 0.32;
-      const t2x = width * 0.68;
+      const t1x = width * 0.3;
+      const t2x = width * 0.7;
       const ny = wgY + 86;
 
-      // ノード T1, T2
       const cycleDetected = isDeadlock && txStep >= 4;
       drawRoundedRect(
         ctx,
-        t1x - 42,
-        ny - 22,
-        84,
-        44,
-        22,
+        t1x - 40,
+        ny - 20,
+        80,
+        40,
+        20,
         cycleDetected ? CANVAS_COLORS.roseSoft : CANVAS_COLORS.cyanSoft,
         cycleDetected ? CANVAS_COLORS.rose : CANVAS_COLORS.cyan,
-        2.2
+        2
       );
       drawRoundedRect(
         ctx,
-        t2x - 42,
-        ny - 22,
-        84,
-        44,
-        22,
+        t2x - 40,
+        ny - 20,
+        80,
+        40,
+        20,
         cycleDetected ? CANVAS_COLORS.roseSoft : CANVAS_COLORS.emeraldSoft,
         cycleDetected ? CANVAS_COLORS.rose : CANVAS_COLORS.emerald,
-        2.2
+        2
       );
 
       ctx.fillStyle = CANVAS_COLORS.textMain;
-      ctx.font = `700 13px ${CANVAS_MONO_FAMILY}`;
+      ctx.font = `700 12px ${CANVAS_MONO_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.fillText('TX1', t1x, ny);
       ctx.fillText('TX2', t2x, ny);
 
       if (isDeadlock && txStep >= 3) {
         const edgeCol = cycleDetected ? CANVAS_COLORS.rose : CANVAS_COLORS.amber;
-        drawCurvedArrow(ctx, t1x + 42, ny - 10, width * 0.5, ny - 46, t2x - 42, ny - 10, edgeCol, 2.5);
-        drawCurvedArrow(ctx, t2x - 42, ny + 10, width * 0.5, ny + 46, t1x + 42, ny + 10, edgeCol, 2.5);
+        drawCurvedArrow(ctx, t1x + 40, ny - 10, width * 0.5, ny - 46, t2x - 40, ny - 10, edgeCol, 2.3);
+        drawCurvedArrow(ctx, t2x - 40, ny + 10, width * 0.5, ny + 46, t1x + 40, ny + 10, edgeCol, 2.3);
         drawPillBadge(ctx, 'B解放待ち', width * 0.5, ny - 36, CANVAS_COLORS.bgDarker, edgeCol, edgeCol, 10);
         drawPillBadge(ctx, 'A解放待ち', width * 0.5, ny + 36, CANVAS_COLORS.bgDarker, edgeCol, edgeCol, 10);
         if (cycleDetected) {
@@ -546,11 +539,11 @@ export const SqlTxSim: React.FC = () => {
             CANVAS_COLORS.roseSoft,
             CANVAS_COLORS.rose,
             CANVAS_COLORS.rose,
-            11
+            10
           );
         }
       } else if (!isDeadlock && txStep >= 1 && txStep <= 3) {
-        drawArrow(ctx, t2x - 44, ny, t1x + 44, ny, CANVAS_COLORS.amber, 2.4);
+        drawArrow(ctx, t2x - 42, ny, t1x + 42, ny, CANVAS_COLORS.amber, 2.3);
         drawPillBadge(
           ctx,
           'T2→T1 (片方向のみ・閉路なし)',
@@ -570,18 +563,24 @@ export const SqlTxSim: React.FC = () => {
           CANVAS_COLORS.emeraldSoft,
           CANVAS_COLORS.emerald,
           CANVAS_COLORS.emerald,
-          11
+          10
         );
       }
       return;
     }
 
-    // 2相コミット(2PC) vs 補償トランザクション(Saga) 並列比較タイムライン
+    // 2相コミット(2PC) vs 補償トランザクション(Saga)
     ctx.fillStyle = CANVAS_COLORS.textMain;
-    ctx.font = `700 13px ${CANVAS_FONT_FAMILY}`;
+    ctx.font = `700 ${isCompact ? 11 : 13}px ${CANVAS_FONT_FAMILY}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('R3秋 比較：2相コミット（2PC ブロッキング） vs 補償トランザクション（Saga 逆順取消）', 14, 22);
+    drawFittedText(
+      ctx,
+      'R3秋 比較：2相コミット（2PC ブロッキング） vs 補償トランザクション（Saga 逆順取消）',
+      12,
+      21,
+      width - 24
+    );
 
     const drawCompareBand = (
       title: string,
@@ -589,20 +588,20 @@ export const SqlTxSim: React.FC = () => {
       accent: string,
       stages: Array<{ label: string; sub: string; color: string; bg: string }>
     ) => {
-      drawRoundedRect(ctx, 14, topY, width - 28, 158, 12, CANVAS_COLORS.bgPanel, accent, 1.5);
+      drawRoundedRect(ctx, 12, topY, width - 24, 158, 10, CANVAS_COLORS.bgPanel, accent, 1.4);
       ctx.fillStyle = accent;
-      ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'left';
-      ctx.fillText(title, 26, topY + 22);
+      drawFittedText(ctx, title, 22, topY + 21, width - 48);
 
       const count = stages.length;
-      const gap = 10;
-      const totalW = width - 56;
+      const gap = 8;
+      const totalW = width - 48;
       const cardW = (totalW - gap * (count - 1)) / count;
 
       stages.forEach((st, idx) => {
         const active = idx + 1 <= txStep;
-        const x = 28 + idx * (cardW + gap);
+        const x = 24 + idx * (cardW + gap);
         const y = topY + 42;
         drawRoundedRect(
           ctx,
@@ -610,18 +609,18 @@ export const SqlTxSim: React.FC = () => {
           y,
           cardW,
           94,
-          8,
+          7,
           active ? st.bg : CANVAS_COLORS.bgDarker,
           active ? st.color : CANVAS_COLORS.border,
-          active ? 2 : 1
+          active ? 1.8 : 1
         );
         ctx.fillStyle = active ? CANVAS_COLORS.textMain : CANVAS_COLORS.textMuted;
-        ctx.font = `700 11px ${CANVAS_FONT_FAMILY}`;
+        ctx.font = `700 ${isCompact ? 10 : 11}px ${CANVAS_FONT_FAMILY}`;
         ctx.textAlign = 'center';
-        drawFittedText(ctx, st.label, x + cardW / 2, y + 32, cardW - 10);
+        drawFittedText(ctx, st.label, x + cardW / 2, y + 32, cardW - 8);
         ctx.font = `500 10px ${CANVAS_FONT_FAMILY}`;
         ctx.fillStyle = active ? CANVAS_COLORS.textSub : '#64748b';
-        drawFittedText(ctx, st.sub, x + cardW / 2, y + 60, cardW - 10);
+        drawFittedText(ctx, st.sub, x + cardW / 2, y + 60, cardW - 8);
 
         if (idx < count - 1) {
           drawArrow(
@@ -631,9 +630,9 @@ export const SqlTxSim: React.FC = () => {
             x + cardW + gap - 1,
             y + 47,
             active ? st.color : CANVAS_COLORS.border,
-            2,
+            1.8,
             false,
-            6
+            5
           );
         }
       });
@@ -654,17 +653,17 @@ export const SqlTxSim: React.FC = () => {
       { label: '補償C2 ホテル取消', sub: '逆順で補償実行', color: CANVAS_COLORS.amber, bg: CANVAS_COLORS.amberSoft },
       { label: '補償C1 航空取消', sub: '結果整合性達成', color: CANVAS_COLORS.cyan, bg: CANVAS_COLORS.cyanSoft },
     ]);
-  }, [subTab, usePartition, frameMode, preceding, following, winFunc, currentRowIdx, recStep, txScenario, txStep, canvasTick]);
+  }, [subTab, usePartition, frameMode, preceding, following, winFunc, currentRowIdx, recStep, txScenario, txStep, drawWidth, isCompact]);
 
   return (
     <div className="space-y-4">
       {/* サブタブ */}
-      <div className="inline-flex flex-wrap rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+      <div className="inline-flex flex-wrap rounded-lg bg-[#E5E5EA]/80 p-0.5">
         <button
           type="button"
           onClick={() => setSubTab('window')}
-          className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
-            subTab === 'window' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+            subTab === 'window' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
           }`}
         >
           ウィンドウ関数スライサー
@@ -672,8 +671,8 @@ export const SqlTxSim: React.FC = () => {
         <button
           type="button"
           onClick={() => setSubTab('recursive')}
-          className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
-            subTab === 'recursive' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+            subTab === 'recursive' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
           }`}
         >
           再帰SQL (WITH RECURSIVE)
@@ -681,8 +680,8 @@ export const SqlTxSim: React.FC = () => {
         <button
           type="button"
           onClick={() => setSubTab('tx')}
-          className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
-            subTab === 'tx' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+            subTab === 'tx' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
           }`}
         >
           排他制御・デッドロック・2PC vs 補償TX
@@ -690,15 +689,15 @@ export const SqlTxSim: React.FC = () => {
       </div>
 
       {/* コントロールパネル */}
-      <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-4">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
         {subTab === 'window' && (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label className="block text-xs font-semibold text-[#52525b] mb-1">関数選択</label>
+              <label className="mb-1 block text-xs font-semibold text-[#6E6E73]">関数選択</label>
               <select
                 value={winFunc}
                 onChange={(e) => setWinFunc(e.target.value as WinFunc)}
-                className="w-full rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1.5 text-xs text-[#18181b]"
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-base md:text-sm text-[#1D1D1F]"
               >
                 <option value="SUM">SUM（合計/累計）</option>
                 <option value="AVG">AVG（移動平均）</option>
@@ -710,8 +709,8 @@ export const SqlTxSim: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#52525b] mb-1">
-                フレーム単位（10/02同日行の差を比較）
+              <label className="mb-1 block text-xs font-semibold text-[#6E6E73]">
+                フレーム単位（10/02同日行を比較）
               </label>
               <div className="flex gap-1.5">
                 {(['ROWS', 'RANGE'] as FrameMode[]).map((m) => (
@@ -719,10 +718,10 @@ export const SqlTxSim: React.FC = () => {
                     key={m}
                     type="button"
                     onClick={() => setFrameMode(m)}
-                    className={`flex-1 rounded-md py-1.5 font-mono text-xs font-semibold ${
+                    className={`flex-1 rounded-lg py-1.5 font-mono text-xs font-semibold transition ${
                       frameMode === m
-                        ? 'bg-[#18181b] text-white'
-                        : 'border border-[#d4d4d0] bg-[#f6f6f4] text-[#52525b]'
+                        ? 'bg-[#007AFF] text-white'
+                        : 'border border-slate-200 bg-[#F5F5F7] text-[#6E6E73]'
                     }`}
                   >
                     {m}
@@ -732,12 +731,12 @@ export const SqlTxSim: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#52525b] mb-1">フレーム範囲</label>
+              <label className="mb-1 block text-xs font-semibold text-[#6E6E73]">フレーム範囲</label>
               <div className="flex gap-1.5">
                 <select
                   value={preceding}
                   onChange={(e) => setPreceding(Number(e.target.value))}
-                  className="w-1/2 rounded-md border border-[#d4d4d0] bg-white px-2 py-1.5 text-xs text-[#18181b]"
+                  className="w-1/2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-base md:text-sm text-[#1D1D1F]"
                 >
                   <option value={-1}>UNBOUNDED前</option>
                   <option value={2}>2 PRECEDING</option>
@@ -747,7 +746,7 @@ export const SqlTxSim: React.FC = () => {
                 <select
                   value={following}
                   onChange={(e) => setFollowing(Number(e.target.value))}
-                  className="w-1/2 rounded-md border border-[#d4d4d0] bg-white px-2 py-1.5 text-xs text-[#18181b]"
+                  className="w-1/2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-base md:text-sm text-[#1D1D1F]"
                 >
                   <option value={0}>CURRENT ROW</option>
                   <option value={1}>1 FOLLOWING</option>
@@ -757,8 +756,11 @@ export const SqlTxSim: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#52525b] mb-1">
-                現在評価行：#{currentRowIdx + 1} / {WINDOW_VISUALIZER_ROWS.length}
+              <label className="mb-1 block text-xs font-semibold text-[#6E6E73]">
+                現在評価行：
+                <span className="font-mono tabular-nums text-[#1D1D1F]">
+                  #{currentRowIdx + 1} / {WINDOW_VISUALIZER_ROWS.length}
+                </span>
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -767,14 +769,14 @@ export const SqlTxSim: React.FC = () => {
                   max={WINDOW_VISUALIZER_ROWS.length - 1}
                   value={currentRowIdx}
                   onChange={(e) => setCurrentRowIdx(Number(e.target.value))}
-                  className="w-full accent-[#18181b]"
+                  className="w-full accent-[#007AFF]"
                 />
-                <label className="flex shrink-0 items-center gap-1 text-xs text-[#52525b]">
+                <label className="flex shrink-0 items-center gap-1 text-xs text-[#6E6E73]">
                   <input
                     type="checkbox"
                     checked={usePartition}
                     onChange={(e) => setUsePartition(e.target.checked)}
-                    className="accent-[#18181b]"
+                    className="accent-[#007AFF]"
                   />
                   部門別
                 </label>
@@ -792,21 +794,21 @@ export const SqlTxSim: React.FC = () => {
                     key={s.step}
                     type="button"
                     onClick={() => setRecStep(s.step)}
-                    className={`rounded-md px-3 py-1.5 font-mono text-xs font-semibold ${
+                    className={`rounded-lg px-3 py-1.5 font-mono text-xs font-semibold tabular-nums ${
                       recStep === s.step
-                        ? 'bg-[#18181b] text-white'
-                        : 'border border-[#d4d4d0] bg-[#f6f6f4] text-[#52525b]'
+                        ? 'bg-[#007AFF] text-white'
+                        : 'border border-slate-200 bg-[#F5F5F7] text-[#6E6E73]'
                     }`}
                   >
                     Step {s.step}
                   </button>
                 ))}
               </div>
-              <span className="text-xs font-semibold text-[#b45309]">
+              <span className="text-xs font-semibold text-[#1D1D1F]">
                 要点：部品C01が別経路で2回展開されるため UNION ALL が必須
               </span>
             </div>
-            <p className="text-xs text-[#3f3f46]">{BOM_STEPS[recStep].desc}</p>
+            <p className="text-xs text-[#6E6E73]">{BOM_STEPS[recStep].desc}</p>
           </div>
         )}
 
@@ -819,10 +821,10 @@ export const SqlTxSim: React.FC = () => {
                   setTxScenario('deadlock');
                   setTxStep(4);
                 }}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
                   txScenario === 'deadlock'
-                    ? 'bg-[#18181b] text-white'
-                    : 'border border-[#d4d4d0] bg-[#f6f6f4] text-[#52525b]'
+                    ? 'bg-[#007AFF] text-white'
+                    : 'border border-slate-200 bg-[#F5F5F7] text-[#6E6E73]'
                 }`}
               >
                 デッドロック発生（R5秋）
@@ -833,10 +835,10 @@ export const SqlTxSim: React.FC = () => {
                   setTxScenario('ordered');
                   setTxStep(5);
                 }}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
                   txScenario === 'ordered'
-                    ? 'bg-[#18181b] text-white'
-                    : 'border border-[#d4d4d0] bg-[#f6f6f4] text-[#52525b]'
+                    ? 'bg-[#007AFF] text-white'
+                    : 'border border-slate-200 bg-[#F5F5F7] text-[#6E6E73]'
                 }`}
               >
                 昇順ロック回避策（R5秋）
@@ -847,55 +849,69 @@ export const SqlTxSim: React.FC = () => {
                   setTxScenario('2pc-vs-saga');
                   setTxStep(5);
                 }}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
                   txScenario === '2pc-vs-saga'
-                    ? 'bg-[#18181b] text-white'
-                    : 'border border-[#d4d4d0] bg-[#f6f6f4] text-[#52525b]'
+                    ? 'bg-[#007AFF] text-white'
+                    : 'border border-slate-200 bg-[#F5F5F7] text-[#6E6E73]'
                 }`}
               >
                 2PC vs 補償TX(Saga)（R3秋）
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-semibold text-[#52525b]">時刻: t{txStep}</span>
+              <span className="font-mono text-xs font-semibold tabular-nums text-[#6E6E73]">
+                時刻: t{txStep}
+              </span>
               <input
                 type="range"
                 min={1}
                 max={5}
                 value={txStep}
                 onChange={(e) => setTxStep(Number(e.target.value))}
-                className="w-32 accent-[#18181b]"
+                className="w-32 accent-[#007AFF]"
               />
             </div>
           </div>
         )}
 
-        {/* HTML5 Canvas 図板 */}
-        <div
-          ref={containerRef}
-          className="w-full overflow-hidden rounded-md border border-[#1e293b] bg-[#0f172a]"
-        >
-          <canvas ref={canvasRef} className="block w-full" />
+        {/* HTML5 Canvas 図板（小画面時は横スクロール対応） */}
+        <div className="space-y-1">
+          <div
+            ref={containerRef}
+            className="w-full overflow-x-auto rounded-lg border border-slate-800 bg-[#0f172a]"
+          >
+            <canvas ref={canvasRef} className="block" />
+          </div>
+          {drawWidth > containerW && (
+            <div className="text-right text-[11px] text-[#6E6E73]">
+              左右にスワイプして全体を表示できます
+            </div>
+          )}
         </div>
 
         {/* 試験頻出ポイント要約 */}
-        <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-3.5 text-xs text-[#3f3f46] leading-relaxed">
+        <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 text-xs text-[#1D1D1F]/90 leading-relaxed">
           {subTab === 'window' && (
             <>
-              <span className="font-bold text-[#18181b]">試験ひっかけ注意：</span>
-              行#2と行#3はどちらも「10/02」の同値タイ行です。現在行を <strong className="text-[#18181b]">#2</strong> に合わせて
-              <strong className="text-[#1d4ed8]"> ROWS </strong>と<strong className="text-[#1d4ed8]"> RANGE </strong>を切り替えると、RANGEでは同値の#3もフレームに巻き込まれる差が確認できます（ORDER BYのみ指定時のデフォルト挙動）。
+              <span className="font-bold text-[#1D1D1F]">試験ひっかけ注意：</span>
+              行#2と行#3はどちらも「10/02」の同値タイ行です。現在行を{' '}
+              <strong className="font-mono text-[#1D1D1F]">#2</strong> に合わせて
+              <strong className="font-mono text-[#007AFF]"> ROWS </strong>と
+              <strong className="font-mono text-[#007AFF]"> RANGE </strong>
+              を切り替えると、RANGEでは同値の#3もフレームに巻き込まれる差が確認できます（ORDER BYのみ指定時のデフォルト挙動）。
             </>
           )}
           {subTab === 'recursive' && (
             <>
-              <span className="font-bold text-[#18181b]">再帰SQLの鉄則：</span>
-              BOM展開で部品ごとの総必要数を出すには外側のSELECTで <code className="font-mono text-[#1d4ed8]">GROUP BY part_id</code> し <code className="font-mono text-[#1d4ed8]">SUM(total_qty)</code> を取ります（例：C01は 8 + 2 = 10個）。無限ループ防止には経路文字列比較や最大階層制限を併用します。
+              <span className="font-bold text-[#1D1D1F]">再帰SQLの鉄則：</span>
+              BOM展開で部品ごとの総必要数を出すには外側のSELECTで{' '}
+              <code className="font-mono text-[#007AFF]">GROUP BY part_id</code> し{' '}
+              <code className="font-mono text-[#007AFF]">SUM(total_qty)</code> を取ります（例：C01は 8 + 2 = 10個）。無限ループ防止には経路文字列比較や最大階層制限を併用します。
             </>
           )}
           {subTab === 'tx' && (
             <>
-              <span className="font-bold text-[#18181b]">記述キーワード：</span>
+              <span className="font-bold text-[#1D1D1F]">記述キーワード：</span>
               デッドロック防止は「ロック獲得順序の統一（主キー昇順等）」、2PCの弱点は「Prepare後のロック長期保持と調停者障害時のブロッキング」、Sagaの弱点は「分離性（Isolation）低下による中間状態可視化→仮状態（セマンティックロック）＋冪等性で対処」。
             </>
           )}

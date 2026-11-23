@@ -1,99 +1,79 @@
-// 共通ヘッダーバー（落ち着いたドキュメント・設計ツール調）
+// iPhone幅（md未満）専用の極薄コンパクトヘッダー（高さ48px）
+// 左：アプリ名＋残り日数バッジ ／ 右端：「同期」と「?」の小さなボタンのみ
 import React from 'react';
 import type { ModuleId } from '../../types/exam';
 import type { StudyStore } from '../../state/useStudyStore';
-import { FLASHCARDS_200 } from '../../data/flashcards200';
-import { ROADMAP_WEEKS } from '../../data/roadmap';
+import { HelpIcon, SyncIcon } from './NavIcons';
 
 interface Props {
-  activeModule: ModuleId;
   onSelectModule: (id: ModuleId) => void;
   onOpenSync: () => void;
+  onOpenHelp: () => void;
+  daysLeft: number;
   store: StudyStore;
 }
 
-const DESKTOP_NAV: Array<{ id: ModuleId; label: string }> = [
-  { id: 'home', label: 'ホーム' },
-  { id: 'lab', label: '図解ラボ' },
-  { id: 'sql', label: 'SQL道場' },
-  { id: 'cbt', label: 'CBT演習' },
-  { id: 'review', label: '弱点復習' },
-  { id: 'roadmap', label: '行程・200語' },
-];
-
 export const HeaderBar: React.FC<Props> = ({
-  activeModule,
   onSelectModule,
   onOpenSync,
+  onOpenHelp,
+  daysLeft,
   store,
 }) => {
-  const activeWeak = store.state.reviewQueue.filter((q) => !q.graduated).length;
-  const totalTasks = ROADMAP_WEEKS.reduce((s, w) => s + w.tasks.length, 0);
-  const roadmapPct = Math.round(
-    (store.state.completedRoadmapTasks.length / Math.max(1, totalTasks)) * 100
-  );
-  const mastered = Object.values(store.state.flashcardStatus).filter((s) => s === 'mastered').length;
+  const { cloudSync } = store;
+
+  const syncDotClass = !cloudSync.configured
+    ? null
+    : cloudSync.phase === 'syncing'
+      ? 'bg-[#007AFF] animate-pulse'
+      : cloudSync.phase === 'error'
+        ? 'bg-red-500'
+        : cloudSync.phase === 'offline' || cloudSync.pendingLocalChanges
+          ? 'bg-amber-500'
+          : 'bg-emerald-500';
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[#e4e4e0] bg-white/95 backdrop-blur-sm pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5">
-        {/* ブランドタイトル（タップでホームへ戻る） */}
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:hidden">
+      <div className="flex h-12 items-center justify-between gap-2 px-3.5">
+        {/* 左：アプリ名と残り日数バッジ */}
         <button
           type="button"
           onClick={() => onSelectModule('home')}
-          className="text-left min-w-0 group"
+          className="flex min-w-0 items-center gap-2 text-left"
         >
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold tracking-tight text-[#18181b] border border-[#18181b] px-1.5 py-0.5 rounded-sm">
-              DB
-            </span>
-            <h1 className="truncate text-sm sm:text-base font-bold tracking-tight text-[#18181b] group-hover:text-[#1d4ed8] transition">
-              DBスペシャリスト学習ノート
-            </h1>
-          </div>
-          <p className="mt-0.5 truncate font-mono text-[11px] text-[#71717a]">
-            R8後期CBT ｜ 行程 {roadmapPct}% ｜ 語句 {mastered}/{FLASHCARDS_200.length}
-          </p>
+          <span className="truncate text-[15px] font-bold tracking-tight text-[#1D1D1F]">
+            DB学習ノート
+          </span>
+          <span className="shrink-0 rounded-md border border-slate-200 bg-[#F5F5F7] px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-[#6E6E73]">
+            残り{daysLeft}日
+          </span>
         </button>
 
-        {/* デスクトップ用テキストタブナビ */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {DESKTOP_NAV.map((item) => {
-            const active = activeModule === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectModule(item.id)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                  active
-                    ? 'bg-[#18181b] text-white'
-                    : 'text-[#52525b] hover:bg-[#f1f1ee] hover:text-[#18181b]'
-                }`}
-              >
-                {item.label}
-                {item.id === 'review' && activeWeak > 0 && (
-                  <span
-                    className={`ml-1.5 inline-flex items-center justify-center rounded px-1 font-mono text-[10px] font-bold ${
-                      active ? 'bg-white/20 text-white' : 'bg-[#fff1f2] text-[#be123c] border border-[#fecdd3]'
-                    }`}
-                  >
-                    {activeWeak}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        {/* 右端：「同期」と「?」の小さなボタンのみ */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onOpenSync}
+            title={cloudSync.message}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-medium text-[#1D1D1F] active:bg-slate-100"
+          >
+            {syncDotClass ? (
+              <span className={`h-1.5 w-1.5 rounded-full ${syncDotClass}`} />
+            ) : (
+              <SyncIcon className="h-3.5 w-3.5 text-[#6E6E73]" />
+            )}
+            <span>同期</span>
+          </button>
 
-        {/* データ同期ボタン */}
-        <button
-          type="button"
-          onClick={onOpenSync}
-          className="shrink-0 rounded-md border border-[#d4d4d0] bg-white px-3 py-1.5 text-xs font-semibold text-[#18181b] hover:bg-[#f1f1ee] transition"
-        >
-          データ同期
-        </button>
+          <button
+            type="button"
+            onClick={onOpenHelp}
+            aria-label="使い方・運用マニュアル"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#6E6E73] active:bg-slate-100"
+          >
+            <HelpIcon className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </header>
   );

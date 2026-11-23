@@ -1,5 +1,6 @@
 // CBT特化①：A4手元メモ用紙の略記お手本Canvas図 ＆ 指/Apple Pencil対応「透明フリーハンド描画オーバーレイCanvas」
-import React, { useState, useEffect, useRef } from 'react';
+// ResizeObserver でタブ切替時・回転時も即座に再描画し、420px未満ではフォント・ノードパディングを自動縮小する
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CbtPastExam } from '../../types/exam';
 import {
   CANVAS_COLORS,
@@ -13,6 +14,7 @@ import {
   drawPillBadge,
   drawCanvasGrid,
 } from '../../utils/canvasHelpers';
+import { useCanvasContainerWidth } from '../../utils/useCanvasWidth';
 
 interface Props {
   exam: CbtPastExam;
@@ -38,7 +40,6 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
   const [penColor, setPenColor] = useState('#fb7185');
   const [penWidth, setPenWidth] = useState(3);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [tick, setTick] = useState(0);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -46,38 +47,51 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
   const activeStrokeRef = useRef<Stroke | null>(null);
   const isDrawingRef = useRef(false);
 
+  const containerWidth = useCanvasContainerWidth(containerRef, 340);
+  const isCompact = containerWidth < 420;
+  const canvasHeight = isCompact ? 310 : 330;
+
   // 問題切替時に描画リセット
   useEffect(() => {
     setStrokes([]);
   }, [exam.id]);
 
-  useEffect(() => {
-    const onResize = () => setTick((t) => t + 1);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const canvasHeight = 330;
-
   // 下層Canvas：問題E-R図 または A4手元メモ用紙お手本を描画
   useEffect(() => {
     const canvas = baseCanvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
-    const width = Math.max(300, container.clientWidth);
+    const width = Math.max(280, containerWidth);
     const ctx = setupHiDpiCanvas(canvas, width, canvasHeight);
     if (!ctx) return;
+
+    const titleFont = isCompact ? 10.5 : 12;
+    const nodeTitleFont = isCompact ? 10 : 11;
+    const attrFont = isCompact ? 9.5 : 10;
+    const badgeFont = isCompact ? 8.5 : 9;
+    const lineStep = isCompact ? 12 : 14;
+    const padInner = isCompact ? 4 : 6;
 
     if (viewMode === 'er') {
       drawCanvasGrid(ctx, width, canvasHeight, 22);
       ctx.fillStyle = CANVAS_COLORS.textMain;
-      ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `700 ${titleFont}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`問題図表（${exam.year}）— 上から指・Apple Pencilで直接矢印やメモを描き込めます`, 12, 18);
+      drawFittedText(
+        ctx,
+        isCompact
+          ? `問題図表（${exam.year}）— 指・Pencilで直接書き込み可`
+          : `問題図表（${exam.year}）— 上から指・Apple Pencilで直接矢印やメモを描き込めます`,
+        10,
+        17,
+        width - 20
+      );
 
-      const boxW = Math.min(148, Math.max(96, width * 0.24));
+      const boxW = isCompact
+        ? Math.min(108, Math.max(82, width * 0.27))
+        : Math.min(148, Math.max(96, width * 0.24));
+
       const nodes = new Map<
         string,
         { cx: number; cy: number; w: number; h: number; e: CbtPastExam['diagramEntities'][number] }
@@ -85,9 +99,10 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
 
       exam.diagramEntities.forEach((e) => {
         const lines = e.pkAttrs.length + (e.otherAttrs?.length || 0) + (e.redundantAttrs?.length || 0);
-        const h = Math.max(60, 30 + lines * 14);
-        const cx = Math.max(boxW / 2 + 10, Math.min(width - boxW / 2 - 10, e.x * width));
-        const cy = Math.max(h / 2 + 34, Math.min(canvasHeight - h / 2 - 10, e.y * canvasHeight));
+        const h = Math.max(isCompact ? 50 : 60, (isCompact ? 26 : 30) + lines * lineStep);
+        const marginX = isCompact ? 6 : 10;
+        const cx = Math.max(boxW / 2 + marginX, Math.min(width - boxW / 2 - marginX, e.x * width));
+        const cy = Math.max(h / 2 + 32, Math.min(canvasHeight - h / 2 - 8, e.y * canvasHeight));
         nodes.set(e.id, { cx, cy, w: boxW, h, e });
       });
 
@@ -102,14 +117,30 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
           const topY = f.cy - f.h / 2;
           ctx.save();
           ctx.strokeStyle = CANVAS_COLORS.emerald;
-          ctx.lineWidth = 1.8;
+          ctx.lineWidth = 1.6;
           ctx.beginPath();
-          ctx.moveTo(f.cx - 22, topY);
-          ctx.bezierCurveTo(f.cx - 38, Math.max(36, topY - 46), f.cx + 38, Math.max(36, topY - 46), f.cx + 22, topY);
+          ctx.moveTo(f.cx - 18, topY);
+          ctx.bezierCurveTo(
+            f.cx - 32,
+            Math.max(34, topY - 40),
+            f.cx + 32,
+            Math.max(34, topY - 40),
+            f.cx + 18,
+            topY
+          );
           ctx.stroke();
           ctx.restore();
           if (rel.label) {
-            drawPillBadge(ctx, rel.label, f.cx, Math.max(38, topY - 34), CANVAS_COLORS.emeraldSoft, CANVAS_COLORS.emerald, CANVAS_COLORS.emerald, 9);
+            drawPillBadge(
+              ctx,
+              rel.label,
+              f.cx,
+              Math.max(36, topY - 30),
+              CANVAS_COLORS.emeraldSoft,
+              CANVAS_COLORS.emerald,
+              CANVAS_COLORS.emerald,
+              badgeFont
+            );
           }
           return;
         }
@@ -128,15 +159,25 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
         const p2 = edgePt(t, ang + Math.PI);
 
         if (rel.curveOffset) {
-          const mx = (p1.x + p2.x) / 2 - Math.sin(ang) * rel.curveOffset;
-          const my = (p1.y + p2.y) / 2 + Math.cos(ang) * rel.curveOffset;
-          drawCurvedArrow(ctx, p1.x, p1.y, mx, my, p2.x, p2.y, col, 1.8, false, 7);
+          const scaledOffset = isCompact ? rel.curveOffset * 0.72 : rel.curveOffset;
+          const mx = (p1.x + p2.x) / 2 - Math.sin(ang) * scaledOffset;
+          const my = (p1.y + p2.y) / 2 + Math.cos(ang) * scaledOffset;
+          drawCurvedArrow(ctx, p1.x, p1.y, mx, my, p2.x, p2.y, col, 1.6, false, 6);
           if (rel.label) {
-            drawPillBadge(ctx, rel.label, (p1.x + 2 * mx + p2.x) / 4, (p1.y + 2 * my + p2.y) / 4, CANVAS_COLORS.bgDarker, col, CANVAS_COLORS.textSub, 9);
+            drawPillBadge(
+              ctx,
+              rel.label,
+              (p1.x + 2 * mx + p2.x) / 4,
+              (p1.y + 2 * my + p2.y) / 4,
+              CANVAS_COLORS.bgDarker,
+              col,
+              CANVAS_COLORS.textSub,
+              badgeFont
+            );
           }
         } else {
           ctx.strokeStyle = col;
-          ctx.lineWidth = 1.8;
+          ctx.lineWidth = 1.6;
           ctx.beginPath();
           ctx.moveTo(p1.x, p1.y);
           ctx.lineTo(p2.x, p2.y);
@@ -146,7 +187,16 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
             drawCardinalityMarker(ctx, p2.x, p2.y, ang + Math.PI, rel.toCard, col);
           }
           if (rel.label) {
-            drawPillBadge(ctx, rel.label, (p1.x + p2.x) / 2, (p1.y + p2.y) / 2 - 10, CANVAS_COLORS.bgDarker, CANVAS_COLORS.borderLight, CANVAS_COLORS.textSub, 9);
+            drawPillBadge(
+              ctx,
+              rel.label,
+              (p1.x + p2.x) / 2,
+              (p1.y + p2.y) / 2 - 9,
+              CANVAS_COLORS.bgDarker,
+              CANVAS_COLORS.borderLight,
+              CANVAS_COLORS.textSub,
+              badgeFont
+            );
           }
         }
       });
@@ -155,6 +205,7 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
       nodes.forEach(({ cx, cy, w, h, e }) => {
         const x = cx - w / 2;
         const y = cy - h / 2;
+        const hdrH = isCompact ? 19 : 22;
         const border =
           e.kind === 'associative'
             ? CANVAS_COLORS.emerald
@@ -167,40 +218,49 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
             : e.kind === 'supertype' || e.kind === 'subtype'
               ? CANVAS_COLORS.amberSoft
               : CANVAS_COLORS.cyanSoft;
-        drawRoundedRect(ctx, x, y, w, h, 7, CANVAS_COLORS.bgPanel, border, 1.6);
-        drawRoundedRect(ctx, x + 1, y + 1, w - 2, 22, 6, hdr);
+        drawRoundedRect(ctx, x, y, w, h, 7, CANVAS_COLORS.bgPanel, border, 1.5);
+        drawRoundedRect(ctx, x + 1, y + 1, w - 2, hdrH, 6, hdr);
         ctx.fillStyle = CANVAS_COLORS.textMain;
-        ctx.font = `700 11px ${CANVAS_FONT_FAMILY}`;
+        ctx.font = `700 ${nodeTitleFont}px ${CANVAS_FONT_FAMILY}`;
         ctx.textAlign = 'center';
-        drawFittedText(ctx, e.name, cx, y + 12, w - 10);
+        drawFittedText(ctx, e.name, cx, y + hdrH / 2 + 1, w - padInner * 2);
 
-        let ry = y + 32;
+        let ry = y + hdrH + (isCompact ? 9 : 10);
         ctx.textAlign = 'left';
-        ctx.font = `600 10px ${CANVAS_FONT_FAMILY}`;
+        ctx.font = `600 ${attrFont}px ${CANVAS_FONT_FAMILY}`;
         e.pkAttrs.forEach((pk) => {
           ctx.fillStyle = pk.includes('(FK)') ? CANVAS_COLORS.amber : CANVAS_COLORS.cyan;
-          drawFittedText(ctx, `# ${pk}`, x + 6, ry, w - 12);
-          ry += 14;
+          drawFittedText(ctx, `# ${pk}`, x + padInner, ry, w - padInner * 2);
+          ry += lineStep;
         });
         (e.otherAttrs || []).forEach((ot) => {
           ctx.fillStyle = ot.includes('(FK)') ? CANVAS_COLORS.emerald : CANVAS_COLORS.textSub;
-          drawFittedText(ctx, ot, x + 6, ry, w - 12);
-          ry += 13;
+          drawFittedText(ctx, ot, x + padInner, ry, w - padInner * 2);
+          ry += lineStep - 1;
         });
         (e.redundantAttrs || []).forEach((rd) => {
           ctx.fillStyle = CANVAS_COLORS.amber;
-          drawFittedText(ctx, rd, x + 6, ry, w - 12);
-          ry += 13;
+          drawFittedText(ctx, rd, x + padInner, ry, w - padInner * 2);
+          ry += lineStep - 1;
         });
       });
     } else {
-      // A4手元メモ用紙 略記お手本Canvas（CBT本番試験配布A4用紙の書き方見本）
+      // A4手元メモ用紙 略記お手本Canvas
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, width, canvasHeight);
 
-      // A4用紙風のダークブルー方眼シート
-      const pad = 12;
-      drawRoundedRect(ctx, pad, pad, width - pad * 2, canvasHeight - pad * 2, 10, '#111827', '#475569', 1.6);
+      const pad = isCompact ? 8 : 12;
+      drawRoundedRect(
+        ctx,
+        pad,
+        pad,
+        width - pad * 2,
+        canvasHeight - pad * 2,
+        8,
+        '#111827',
+        '#475569',
+        1.5
+      );
       ctx.strokeStyle = '#1f2937';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -214,16 +274,22 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
       }
       ctx.stroke();
 
-      // ヘッダ
       ctx.fillStyle = CANVAS_COLORS.amber;
-      ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `700 ${titleFont}px ${CANVAS_FONT_FAMILY}`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`CBT本番 A4配布メモ用紙 略記お手本（${exam.year}：最初の5分で書く骨格）`, 24, 30);
+      drawFittedText(
+        ctx,
+        `CBT本番 A4配布メモ用紙 略記お手本（${exam.year}：最初の5分で書く骨格）`,
+        pad + 10,
+        pad + 16,
+        width - pad * 2 - 20
+      );
 
-      // 4象限にA4メモ構成を配置
-      const innerW = (width - 56) / 2;
-      const innerH = (canvasHeight - 76) / 2;
+      const gapQ = isCompact ? 6 : 8;
+      const innerW = (width - (pad + 8) * 2 - gapQ) / 2;
+      const topStart = pad + 32;
+      const innerH = (canvasHeight - topStart - pad - 8 - gapQ) / 2;
 
       const drawMemoQuadrant = (
         qx: number,
@@ -232,59 +298,64 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
         color: string,
         lines: string[]
       ) => {
-        drawRoundedRect(ctx, qx, qy, innerW, innerH, 8, '#0f172a', color, 1.4);
+        drawRoundedRect(ctx, qx, qy, innerW, innerH, 7, '#0f172a', color, 1.3);
         ctx.fillStyle = color;
-        ctx.font = `700 11px ${CANVAS_FONT_FAMILY}`;
+        ctx.font = `700 ${isCompact ? 9.5 : 11}px ${CANVAS_FONT_FAMILY}`;
         ctx.textAlign = 'left';
-        ctx.fillText(title, qx + 10, qy + 18);
+        drawFittedText(ctx, title, qx + 8, qy + 15, innerW - 16);
 
         ctx.fillStyle = CANVAS_COLORS.textMain;
-        ctx.font = `500 11px ${CANVAS_MONO_FAMILY}`;
+        ctx.font = `500 ${isCompact ? 9.5 : 11}px ${CANVAS_MONO_FAMILY}`;
+        const rowGap = isCompact ? 18 : 22;
         lines.forEach((ln, i) => {
-          const ly = qy + 38 + i * 22;
-          if (ly < qy + innerH - 8) {
-            drawFittedText(ctx, `・${ln}`, qx + 10, ly, innerW - 20);
+          const ly = qy + (isCompact ? 32 : 38) + i * rowGap;
+          if (ly < qy + innerH - 6) {
+            drawFittedText(ctx, `・${ln}`, qx + 8, ly, innerW - 16);
           }
         });
       };
 
-      drawMemoQuadrant(24, 48, '① エンティティ略記（左上）', CANVAS_COLORS.cyan, exam.a4MemoNotes.entities);
-      drawMemoQuadrant(32 + innerW, 48, '② 多重度矢印・物理メモ（右上）', CANVAS_COLORS.emerald, exam.a4MemoNotes.arrows);
-      drawMemoQuadrant(24, 56 + innerH, '③ 主キー候補 # 整理（左下）', CANVAS_COLORS.amber, exam.a4MemoNotes.pkCandidates);
-      drawMemoQuadrant(32 + innerW, 56 + innerH, '④ ひっかけ＆NULL注意（右下）', CANVAS_COLORS.rose, exam.a4MemoNotes.traps);
+      const leftQ = pad + 8;
+      const rightQ = leftQ + innerW + gapQ;
+      drawMemoQuadrant(leftQ, topStart, '① エンティティ略記', CANVAS_COLORS.cyan, exam.a4MemoNotes.entities);
+      drawMemoQuadrant(rightQ, topStart, '② 多重度・物理メモ', CANVAS_COLORS.emerald, exam.a4MemoNotes.arrows);
+      drawMemoQuadrant(leftQ, topStart + innerH + gapQ, '③ 主キー候補 # 整理', CANVAS_COLORS.amber, exam.a4MemoNotes.pkCandidates);
+      drawMemoQuadrant(rightQ, topStart + innerH + gapQ, '④ ひっかけ＆NULL注意', CANVAS_COLORS.rose, exam.a4MemoNotes.traps);
     }
-  }, [exam, viewMode, tick]);
+  }, [exam, viewMode, containerWidth, canvasHeight, isCompact]);
 
   // 上層：透明フリーハンドオーバーレイCanvasの再描画
-  const redrawOverlay = (currentList: Stroke[], draft?: Stroke | null) => {
-    const canvas = overlayCanvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-    const width = Math.max(300, container.clientWidth);
-    const ctx = setupHiDpiCanvas(canvas, width, canvasHeight);
-    if (!ctx) return;
+  const redrawOverlay = useCallback(
+    (currentList: Stroke[], draft?: Stroke | null) => {
+      const canvas = overlayCanvasRef.current;
+      if (!canvas) return;
+      const width = Math.max(280, containerWidth);
+      const ctx = setupHiDpiCanvas(canvas, width, canvasHeight);
+      if (!ctx) return;
 
-    ctx.clearRect(0, 0, width, canvasHeight);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+      ctx.clearRect(0, 0, width, canvasHeight);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
 
-    const all = draft ? [...currentList, draft] : currentList;
-    all.forEach((st) => {
-      if (st.points.length < 2) return;
-      ctx.strokeStyle = st.color;
-      ctx.lineWidth = st.width;
-      ctx.beginPath();
-      ctx.moveTo(st.points[0].x, st.points[0].y);
-      for (let i = 1; i < st.points.length; i++) {
-        ctx.lineTo(st.points[i].x, st.points[i].y);
-      }
-      ctx.stroke();
-    });
-  };
+      const all = draft ? [...currentList, draft] : currentList;
+      all.forEach((st) => {
+        if (st.points.length < 2) return;
+        ctx.strokeStyle = st.color;
+        ctx.lineWidth = st.width;
+        ctx.beginPath();
+        ctx.moveTo(st.points[0].x, st.points[0].y);
+        for (let i = 1; i < st.points.length; i++) {
+          ctx.lineTo(st.points[i].x, st.points[i].y);
+        }
+        ctx.stroke();
+      });
+    },
+    [containerWidth, canvasHeight]
+  );
 
   useEffect(() => {
     redrawOverlay(strokes, null);
-  }, [strokes, tick]);
+  }, [strokes, redrawOverlay]);
 
   const getLocalPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -323,15 +394,15 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
   };
 
   return (
-    <div className="rounded-lg border border-[#e4e4e0] bg-white p-3.5 space-y-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-3">
       {/* ツールバー */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+        <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
           <button
             type="button"
             onClick={() => setViewMode('er')}
-            className={`rounded px-2.5 py-1 text-xs font-semibold ${
-              viewMode === 'er' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+              viewMode === 'er' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
             }`}
           >
             問題E-R図
@@ -339,11 +410,11 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
           <button
             type="button"
             onClick={() => setViewMode('a4memo')}
-            className={`rounded px-2.5 py-1 text-xs font-semibold ${
-              viewMode === 'a4memo' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+              viewMode === 'a4memo' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
             }`}
           >
-            A4手元メモ略記お手本
+            A4メモお手本
           </button>
         </div>
 
@@ -351,17 +422,17 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
           <button
             type="button"
             onClick={() => setDrawEnabled((d) => !d)}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+            className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
               drawEnabled
-                ? 'bg-[#18181b] text-white'
-                : 'border border-[#d4d4d0] bg-[#f6f6f4] text-[#52525b]'
+                ? 'bg-[#007AFF] text-white'
+                : 'border border-slate-200 bg-[#F5F5F7] text-[#6E6E73]'
             }`}
           >
             {drawEnabled ? '手書きON' : 'スクロール優先'}
           </button>
 
           {/* ペン色パレット */}
-          <div className="flex items-center gap-1 rounded-md border border-[#d4d4d0] bg-[#f6f6f4] px-2 py-1">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-[#F5F5F7] px-2 py-1">
             {PEN_COLORS.map((c) => (
               <button
                 key={c.hex}
@@ -372,7 +443,7 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
                   setDrawEnabled(true);
                 }}
                 className={`h-4 w-4 rounded-full border border-black/20 transition ${
-                  penColor === c.hex ? 'ring-2 ring-[#18181b] scale-110' : 'opacity-75'
+                  penColor === c.hex ? 'ring-2 ring-[#007AFF] scale-110' : 'opacity-75'
                 }`}
                 style={{ backgroundColor: c.hex }}
               />
@@ -382,7 +453,8 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
           <select
             value={penWidth}
             onChange={(e) => setPenWidth(Number(e.target.value))}
-            className="rounded-md border border-[#d4d4d0] bg-white px-2 py-1 text-xs text-[#18181b]"
+            aria-label="ペンの太さ"
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-base md:text-sm text-[#1D1D1F]"
           >
             <option value={2}>細</option>
             <option value={3}>中</option>
@@ -393,7 +465,7 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
             type="button"
             disabled={strokes.length === 0}
             onClick={() => setStrokes((prev) => prev.slice(0, -1))}
-            className="rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1 text-xs font-medium text-[#52525b] hover:bg-[#f1f1ee] disabled:opacity-40"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-[#6E6E73] hover:bg-[#F5F5F7] disabled:opacity-40"
           >
             戻す
           </button>
@@ -401,7 +473,7 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
             type="button"
             disabled={strokes.length === 0}
             onClick={() => setStrokes([])}
-            className="rounded-md border border-[#fecdd3] bg-[#fff1f2] px-2.5 py-1 text-xs font-medium text-[#be123c] disabled:opacity-40"
+            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 disabled:opacity-40"
           >
             全消去
           </button>
@@ -411,7 +483,7 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
       {/* 下層図解Canvas ＋ 上層透明フリーハンドオーバーレイCanvas */}
       <div
         ref={containerRef}
-        className="relative w-full overflow-hidden rounded-md border border-[#1e293b] bg-[#0f172a]"
+        className="relative w-full overflow-hidden rounded-lg border border-slate-800 bg-[#0f172a]"
         style={{ height: `${canvasHeight}px` }}
       >
         <canvas ref={baseCanvasRef} className="block w-full h-full" />
@@ -427,9 +499,9 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between text-[11px] text-[#71717a]">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#6E6E73]">
         <span>Apple Pencilや指で、図表上に直接矢印・複合キー・NULL注記を書き込めます。</span>
-        <span className="font-mono">ストローク：{strokes.length}画</span>
+        <span className="font-mono tabular-nums">ストローク：{strokes.length}画</span>
       </div>
     </div>
   );

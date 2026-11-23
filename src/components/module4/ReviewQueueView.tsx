@@ -8,7 +8,6 @@ import { SchemaLineDisplay } from '../module1/NormalizationErSim';
 
 interface Props {
   store: StudyStore;
-  onOpenSync: () => void;
 }
 
 const KEY_ROLE_CYCLE: KeyRole[] = ['none', 'pk', 'fk', 'pkfk'];
@@ -19,8 +18,8 @@ const KEY_ROLE_LABEL: Record<KeyRole, string> = {
   pkfk: '主兼外(二重線)',
 };
 const KEY_ROLE_CLASS: Record<KeyRole, string> = {
-  none: 'key-none text-[#18181b]',
-  pk: 'key-pk text-[#1d4ed8] font-bold',
+  none: 'key-none text-[#1D1D1F]',
+  pk: 'key-pk text-[#007AFF] font-bold',
   fk: 'key-fk text-[#15803d] font-semibold',
   pkfk: 'key-pkfk text-[#b45309] font-bold',
 };
@@ -32,7 +31,7 @@ const KIND_LABEL: Record<ReviewQueueItem['kind'], string> = {
   physical: '物理・回復',
 };
 
-export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
+export const ReviewQueueView: React.FC<Props> = ({ store }) => {
   const [filter, setFilter] = useState<'active' | 'graduated'>('active');
   const [drillingId, setDrillingId] = useState<string | null>(null);
 
@@ -191,56 +190,48 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
   };
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#e4e4e0] pb-3">
-        <div>
-          <div className="font-mono text-[11px] uppercase tracking-wider text-[#71717a]">
-            04 / WEAKNESS REVIEW QUEUE
-          </div>
-          <h2 className="mt-0.5 text-xl font-bold tracking-tight text-[#18181b]">
-            弱点復習キュー（未卒業 {activeItems.length}件 ／ 卒業済 {graduatedItems.length}件）
+    <section className="space-y-4">
+      <div className="border-b border-slate-200 pb-3">
+        <div className="flex flex-wrap items-baseline gap-2.5">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
+            弱点復習キュー
           </h2>
-          <p className="mt-0.5 text-xs text-[#52525b]">
-            同じ問題を2回連続で満点にすると卒業します。途中で1回間違えると連続回数は0に戻ります。
-          </p>
+          <span className="font-mono text-xs font-semibold tabular-nums text-[#6E6E73]">
+            未卒業 {activeItems.length}件 ／ 卒業済 {graduatedItems.length}件
+          </span>
         </div>
-
-        <button
-          type="button"
-          onClick={onOpenSync}
-          className="rounded-md border border-[#d4d4d0] bg-white px-3.5 py-2 text-xs font-semibold text-[#18181b] hover:bg-[#f1f1ee]"
-        >
-          データ同期（Base64 / JSON）
-        </button>
+        <p className="mt-0.5 text-xs text-[#6E6E73]">
+          同じ問題を2回連続で満点にすると卒業します。途中で1回間違えると連続回数は0に戻ります。
+        </p>
       </div>
 
       {/* フィルタ＆お試し投入 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+        <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
           <button
             type="button"
             onClick={() => setFilter('active')}
-            className={`rounded px-3.5 py-1.5 text-xs font-semibold ${
-              filter === 'active' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
+              filter === 'active' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
             }`}
           >
-            要復習 ({activeItems.length})
+            要復習 (<span className="font-mono tabular-nums">{activeItems.length}</span>)
           </button>
           <button
             type="button"
             onClick={() => setFilter('graduated')}
-            className={`rounded px-3.5 py-1.5 text-xs font-semibold ${
-              filter === 'graduated' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
+              filter === 'graduated' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
             }`}
           >
-            卒業済 ({graduatedItems.length})
+            卒業済 (<span className="font-mono tabular-nums">{graduatedItems.length}</span>)
           </button>
         </div>
 
         <button
           type="button"
           onClick={seedTypicalWeakPoints}
-          className="rounded-md border border-[#d4d4d0] bg-white px-3 py-1.5 text-xs font-semibold text-[#52525b] hover:bg-[#f1f1ee]"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
         >
           + 典型ひっかけ3問をキューへ投入
         </button>
@@ -248,32 +239,32 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
 
       {/* 反復ドリル実行パネル */}
       {activeDrill && (
-        <div className="rounded-lg border-2 border-[#18181b] bg-white p-4 sm:p-5 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e4e0] pb-2.5">
+        <div className="rounded-lg border-2 border-[#007AFF] bg-white p-4 sm:p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
             <div className="flex items-center gap-2">
-              <span className="rounded bg-[#18181b] px-2 py-0.5 text-[11px] font-semibold text-white">
+              <span className="rounded-md bg-[#007AFF] px-2 py-0.5 text-[11px] font-semibold text-white">
                 反復演習中
               </span>
-              <span className="font-mono text-xs font-bold text-[#b45309]">
+              <span className="font-mono text-xs font-bold tabular-nums text-[#1D1D1F]">
                 連続満点：{activeDrill.consecutivePerfect} / 2
               </span>
             </div>
             <button
               type="button"
               onClick={() => setDrillingId(null)}
-              className="text-xs font-semibold text-[#71717a] hover:text-[#18181b]"
+              className="text-xs font-semibold text-[#6E6E73] hover:text-[#1D1D1F]"
             >
               閉じる
             </button>
           </div>
 
-          <h3 className="text-base font-bold text-[#18181b]">{activeDrill.title}</h3>
-          <p className="text-sm text-[#3f3f46] leading-relaxed">{activeDrill.prompt}</p>
+          <h3 className="text-base font-bold text-[#1D1D1F]">{activeDrill.title}</h3>
+          <p className="text-sm text-[#1D1D1F]/90 leading-relaxed">{activeDrill.prompt}</p>
 
           {activeDrill.kind === 'schema' && activeDrill.payload.schema && (
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-4">
-                <span className="text-sm font-bold text-[#18181b]">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-[#F5F5F7] p-4">
+                <span className="text-sm font-bold text-[#1D1D1F]">
                   {activeDrill.payload.schema.tableName} (
                 </span>
                 {activeDrill.payload.schema.attributes.map((attr, idx) => {
@@ -291,19 +282,19 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                           )
                         )
                       }
-                      className="flex flex-col items-center rounded-md border border-[#d4d4d0] bg-white px-3 py-2 hover:border-[#18181b]"
+                      className="flex flex-col items-center rounded-lg border border-slate-200 bg-white px-3 py-2 hover:border-[#007AFF]"
                     >
                       <span className={`text-sm ${KEY_ROLE_CLASS[chosen]}`}>{attr.name}</span>
-                      <span className="mt-1 text-[10px] text-[#71717a]">{KEY_ROLE_LABEL[chosen]}</span>
+                      <span className="mt-1 text-[10px] text-[#6E6E73]">{KEY_ROLE_LABEL[chosen]}</span>
                     </button>
                   );
                 })}
-                <span className="text-sm font-bold text-[#18181b]">)</span>
+                <span className="text-sm font-bold text-[#1D1D1F]">)</span>
               </div>
               <button
                 type="button"
                 onClick={gradeActiveDrill}
-                className="rounded-md bg-[#18181b] px-4 py-2 text-xs font-semibold text-white hover:bg-[#27272a]"
+                className="rounded-lg bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0066D6]"
               >
                 採点する
               </button>
@@ -315,7 +306,7 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
 
           {activeDrill.kind === 'signal' && activeDrill.payload.signalSegments && (
             <div className="space-y-3">
-              <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-4 leading-8 text-sm">
+              <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-4 leading-8 text-sm">
                 {activeDrill.payload.signalSegments.map((seg) => {
                   const picked = selectedSignals.includes(seg.id);
                   return (
@@ -327,10 +318,10 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                           prev.includes(seg.id) ? prev.filter((x) => x !== seg.id) : [...prev, seg.id]
                         )
                       }
-                      className={`mr-1 mb-1 inline rounded border px-1.5 py-0.5 text-left ${
+                      className={`mr-1 mb-1 inline rounded-md border px-1.5 py-0.5 text-left ${
                         picked
-                          ? 'border-[#1d4ed8] bg-[#eff6ff] font-bold text-[#1d4ed8]'
-                          : 'border-transparent text-[#18181b] hover:bg-[#e4e4e0]'
+                          ? 'border-[#007AFF] bg-sky-50 font-bold text-[#007AFF]'
+                          : 'border-transparent text-[#1D1D1F] hover:bg-slate-200/70'
                       }`}
                     >
                       {seg.text}
@@ -341,7 +332,7 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
               <button
                 type="button"
                 onClick={gradeActiveDrill}
-                className="rounded-md bg-[#18181b] px-4 py-2 text-xs font-semibold text-white hover:bg-[#27272a]"
+                className="rounded-lg bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0066D6]"
               >
                 シグナルを採点する
               </button>
@@ -350,7 +341,7 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
 
           {activeDrill.kind === 'essay' && (
             <div className="space-y-3">
-              <div className="flex justify-end font-mono text-xs text-[#52525b]">
+              <div className="flex justify-end font-mono text-xs tabular-nums text-[#6E6E73]">
                 {essayInput.length} / {activeDrill.payload.maxChars || 50} 字
               </div>
               <textarea
@@ -358,20 +349,20 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                 onChange={(e) => setEssayInput(e.target.value)}
                 rows={3}
                 placeholder="制限字数内で再解答を入力してください..."
-                className="w-full rounded-md border border-[#d4d4d0] bg-[#fafafa] p-3 text-sm text-[#18181b] focus:bg-white focus:border-[#18181b] focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 bg-[#F5F5F7]/60 p-3 text-base md:text-sm text-[#1D1D1F] focus:border-[#007AFF] focus:bg-white focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setEssayReveal(true)}
-                className="rounded-md bg-[#18181b] px-4 py-2 text-xs font-semibold text-white"
+                className="rounded-lg bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0066D6]"
               >
                 公式解答と突合する
               </button>
               {essayReveal && (
-                <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-3.5 space-y-2.5 text-xs">
+                <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 space-y-2.5 text-xs">
                   <div>
-                    <span className="font-bold text-[#15803d]">公式解答例：</span>
-                    <span className="text-[#18181b]">{activeDrill.payload.officialAnswer}</span>
+                    <span className="font-bold text-[#007AFF]">公式解答例：</span>
+                    <span className="text-[#1D1D1F]">{activeDrill.payload.officialAnswer}</span>
                   </div>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <button
@@ -385,7 +376,7 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                             : `満点記録（連続 ${res.count}/2 — あと1回で卒業）`,
                         });
                       }}
-                      className="rounded-md border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-1.5 text-xs font-semibold text-[#15803d]"
+                      className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-[#007AFF]"
                     >
                       満点レベル（連続+1）
                     </button>
@@ -406,7 +397,7 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                           msg: '要再復習（連続満点カウントを 0/2 にリセットしました）',
                         });
                       }}
-                      className="rounded-md border border-[#fecdd3] bg-[#fff1f2] px-3 py-1.5 text-xs font-semibold text-[#be123c]"
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700"
                     >
                       不十分（0へリセット）
                     </button>
@@ -424,33 +415,33 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                   value={physInput}
                   onChange={(e) => setPhysInput(e.target.value)}
                   placeholder="解答を入力..."
-                  className="w-56 rounded-md border border-[#d4d4d0] bg-white px-3 py-2 text-sm font-mono text-[#18181b]"
+                  className="w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-base md:text-sm text-[#1D1D1F] focus:border-[#007AFF] focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={gradeActiveDrill}
-                  className="rounded-md bg-[#18181b] px-4 py-2 text-xs font-semibold text-white"
+                  className="rounded-lg bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0066D6]"
                 >
                   判定する
                 </button>
               </div>
               {activeDrill.payload.physicalFormula && (
-                <div className="text-xs text-[#52525b]">公式：{activeDrill.payload.physicalFormula}</div>
+                <div className="text-xs text-[#6E6E73]">公式：{activeDrill.payload.physicalFormula}</div>
               )}
             </div>
           )}
 
           {feedback && (
             <div
-              className={`rounded-md border p-3 text-xs font-medium ${
+              className={`rounded-lg border p-3 text-xs font-medium ${
                 feedback.ok
-                  ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'
-                  : 'border-[#fecdd3] bg-[#fff1f2] text-[#9f1239]'
+                  ? 'border-sky-200 bg-sky-50 text-[#007AFF]'
+                  : 'border-red-200 bg-red-50 text-red-700'
               }`}
             >
               <div className="font-bold">{feedback.msg}</div>
               {activeDrill.payload.explanation && (
-                <p className="mt-1.5 text-[#3f3f46] whitespace-pre-line">
+                <p className="mt-1.5 whitespace-pre-line text-[#1D1D1F]/85">
                   {activeDrill.payload.explanation}
                 </p>
               )}
@@ -461,13 +452,13 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
 
       {/* キュー一覧 */}
       {displayItems.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[#d4d4d0] bg-white p-8 text-center space-y-1.5">
-          <div className="text-sm font-bold text-[#18181b]">
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center space-y-1.5">
+          <div className="text-sm font-bold text-[#1D1D1F]">
             {filter === 'active'
               ? '現在、未卒業の弱点アイテムはありません。'
               : '卒業済みの弱点アイテムはまだありません。'}
           </div>
-          <p className="text-xs text-[#71717a]">
+          <p className="text-xs text-[#6E6E73]">
             図解ラボの下線クイズ・CBT記述・本文シグナル発掘で間違えた問題が自動的にここへ収集されます。
           </p>
         </div>
@@ -476,17 +467,19 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
           {displayItems.map((item) => (
             <div
               key={item.id}
-              className="rounded-lg border border-[#e4e4e0] bg-white p-4 flex flex-col justify-between gap-3"
+              className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4"
             >
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-[11px]">
-                    <span className="rounded border border-[#e4e4e0] bg-[#f6f6f4] px-2 py-0.5 font-semibold text-[#18181b]">
+                    <span className="rounded-md border border-slate-200 bg-[#F5F5F7] px-2 py-0.5 font-semibold text-[#1D1D1F]">
                       {KIND_LABEL[item.kind]}
                     </span>
-                    <span className="font-mono font-semibold text-[#1d4ed8]">{item.year}</span>
+                    <span className="font-mono font-semibold tabular-nums text-[#6E6E73]">
+                      {item.year}
+                    </span>
                   </div>
-                  <span className="font-mono text-xs font-semibold text-[#52525b]">
+                  <span className="font-mono text-xs font-semibold tabular-nums text-[#1D1D1F]">
                     連続 {item.consecutivePerfect}/2（誤答 {item.missCount}回）
                   </span>
                 </div>
@@ -496,25 +489,25 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                     <div
                       key={step}
                       className={`h-1.5 flex-1 rounded-full ${
-                        item.consecutivePerfect >= step ? 'bg-[#15803d]' : 'bg-[#e4e4e0]'
+                        item.consecutivePerfect >= step ? 'bg-[#007AFF]' : 'bg-slate-200'
                       }`}
                     />
                   ))}
                 </div>
 
-                <h4 className="text-sm font-bold text-[#18181b] pt-1">{item.title}</h4>
-                <p className="text-xs text-[#52525b] line-clamp-2">{item.prompt}</p>
+                <h4 className="pt-1 text-sm font-bold text-[#1D1D1F]">{item.title}</h4>
+                <p className="line-clamp-2 text-xs text-[#6E6E73]">{item.prompt}</p>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#f1f1ee]">
-                <span className="font-mono text-[10px] text-[#71717a]">
+              <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                <span className="font-mono text-[10px] tabular-nums text-[#6E6E73]">
                   更新：{new Date(item.updatedAt).toLocaleDateString('ja-JP')}
                 </span>
                 {item.graduated ? (
                   <button
                     type="button"
                     onClick={() => store.requeueReviewItem(item.id)}
-                    className="rounded-md border border-[#d4d4d0] bg-white px-3 py-1 text-xs font-semibold text-[#52525b] hover:bg-[#f1f1ee]"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7]"
                   >
                     再復習に戻す
                   </button>
@@ -522,7 +515,7 @@ export const ReviewQueueView: React.FC<Props> = ({ store, onOpenSync }) => {
                   <button
                     type="button"
                     onClick={() => startDrill(item)}
-                    className="rounded-md bg-[#18181b] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#27272a]"
+                    className="rounded-lg bg-[#007AFF] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#0066D6]"
                   >
                     復習を開始 →
                   </button>

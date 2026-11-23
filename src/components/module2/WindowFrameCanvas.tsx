@@ -1,4 +1,5 @@
 // モジュール2付属：ウィンドウ関数フレーム可視化専用 HTML5 Canvas コンポーネント
+// iPhone小画面（420px未満）では横スクロールコンテナ内で潰れ防止描画＋フォント自動縮小を適用
 import React, { useState, useEffect, useRef } from 'react';
 import {
   CANVAS_COLORS,
@@ -10,6 +11,7 @@ import {
   drawFittedText,
   drawPillBadge,
 } from '../../utils/canvasHelpers';
+import { useCanvasContainerWidth } from '../../utils/useCanvasWidth';
 
 interface Props {
   preset?: 'moving-avg' | 'rank-compare';
@@ -38,10 +40,10 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
   const [mode, setMode] = useState<'moving-avg' | 'rank-compare'>(preset);
   const [activeIdx, setActiveIdx] = useState(2);
   const [playing, setPlaying] = useState(false);
-  const [tick, setTick] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerWidth = useCanvasContainerWidth(containerRef, 360);
 
   useEffect(() => {
     setMode(preset);
@@ -58,19 +60,15 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
     return () => window.clearInterval(timer);
   }, [playing, rows.length]);
 
-  useEffect(() => {
-    const onResize = () => setTick((t) => t + 1);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  const isCompact = containerWidth < 420;
+  const drawWidth = Math.max(containerWidth, isCompact ? 540 : 320);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
-    const width = Math.max(300, container.clientWidth);
-    const height = 250;
+    const width = drawWidth;
+    const height = isCompact ? 236 : 250;
     const ctx = setupHiDpiCanvas(canvas, width, height);
     if (!ctx) return;
 
@@ -79,26 +77,26 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
     const cur = rows[Math.min(activeIdx, rows.length - 1)];
 
     ctx.fillStyle = CANVAS_COLORS.textMain;
-    ctx.font = `700 12px ${CANVAS_FONT_FAMILY}`;
+    ctx.font = `700 ${isCompact ? 11 : 12}px ${CANVAS_FONT_FAMILY}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(
+    drawFittedText(
+      ctx,
       mode === 'moving-avg'
         ? 'ウィンドウフレーム可視化：ROWS BETWEEN 2 PRECEDING AND CURRENT ROW（直近3行移動平均）'
         : 'パーティション内ランキング可視化：RANK() vs DENSE_RANK() ＆ 部門MAX比較',
       12,
-      20
+      20,
+      width - 24
     );
 
-    // 各行を横並びバー/カードとして可視化（パーティション境界が一目瞭然）
     const n = rows.length;
-    const padX = 14;
-    const gap = 8;
+    const padX = isCompact ? 10 : 14;
+    const gap = isCompact ? 6 : 8;
     const cardW = (width - padX * 2 - gap * (n - 1)) / n;
-    const cardTop = 54;
-    const cardH = 128;
+    const cardTop = 48;
+    const cardH = isCompact ? 120 : 128;
 
-    // 同じパーティション内の現在インデックス計算
     const samePartIdxs = rows
       .map((r, i) => ({ r, i }))
       .filter((x) => x.r.part === cur.part)
@@ -136,7 +134,7 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
             ? CANVAS_COLORS.cyan
             : CANVAS_COLORS.border;
 
-      drawRoundedRect(ctx, x, cardTop, cardW, cardH, 8, bg, stroke, isCur ? 2.4 : 1.4);
+      drawRoundedRect(ctx, x, cardTop, cardW, cardH, 8, bg, stroke, isCur ? 2.2 : 1.3);
 
       // パーティション境界破線
       if (i > 0 && rows[i - 1].part !== row.part) {
@@ -145,8 +143,8 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
         ctx.lineWidth = 2;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(x - gap / 2, cardTop - 10);
-        ctx.lineTo(x - gap / 2, cardTop + cardH + 10);
+        ctx.moveTo(x - gap / 2, cardTop - 8);
+        ctx.lineTo(x - gap / 2, cardTop + cardH + 8);
         ctx.stroke();
         ctx.restore();
       }
@@ -156,13 +154,13 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
       ctx.fillStyle = CANVAS_COLORS.cyan;
       drawFittedText(ctx, row.part, x + cardW / 2, cardTop + 18, cardW - 6);
 
-      ctx.font = `600 11px ${CANVAS_FONT_FAMILY}`;
+      ctx.font = `600 ${isCompact ? 10 : 11}px ${CANVAS_FONT_FAMILY}`;
       ctx.fillStyle = CANVAS_COLORS.textSub;
-      drawFittedText(ctx, row.label, x + cardW / 2, cardTop + 40, cardW - 6);
+      drawFittedText(ctx, row.label, x + cardW / 2, cardTop + 38, cardW - 6);
 
-      ctx.font = `700 15px ${CANVAS_MONO_FAMILY}`;
+      ctx.font = `700 ${isCompact ? 13 : 15}px ${CANVAS_MONO_FAMILY}`;
       ctx.fillStyle = CANVAS_COLORS.textMain;
-      ctx.fillText(String(row.val), x + cardW / 2, cardTop + 72);
+      ctx.fillText(String(row.val), x + cardW / 2, cardTop + 68);
 
       const tag = isCur ? '現在行★' : inFrame ? 'フレーム内' : '対象外';
       ctx.font = `700 10px ${CANVAS_FONT_FAMILY}`;
@@ -171,17 +169,16 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
         : inFrame
           ? CANVAS_COLORS.emerald
           : CANVAS_COLORS.textMuted;
-      drawFittedText(ctx, tag, x + cardW / 2, cardTop + 104, cardW - 6);
+      drawFittedText(ctx, tag, x + cardW / 2, cardTop + (isCompact ? 98 : 104), cardW - 6);
     });
 
-    // 下段：計算結果リアルタイム表示
     const frameVals = Array.from(frameSet).map((i) => rows[i].val);
     let summary = '';
     if (mode === 'moving-avg') {
       const avg = (frameVals.reduce((a, b) => a + b, 0) / frameVals.length).toFixed(1);
       const cumVals = samePartIdxs.slice(0, posInPart + 1).map((i) => rows[i].val);
       const cum = cumVals.reduce((a, b) => a + b, 0);
-      summary = `現在行[${cur.part} ${cur.label}] → 移動平均フレーム(${frameVals.join('+')})/${frameVals.length} = ${avg} ／ 累計SUM = ${cum}`;
+      summary = `現在行[${cur.part} ${cur.label}] → 移動平均(${frameVals.join('+')})/${frameVals.length}=${avg} ／ 累計=${cum}`;
     } else {
       const partRows = samePartIdxs.map((i) => rows[i]);
       const rnk = partRows.findIndex((r) => r.val === cur.val) + 1;
@@ -194,28 +191,28 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
       ctx,
       summary,
       width / 2,
-      218,
+      height - 26,
       CANVAS_COLORS.bgDarker,
       CANVAS_COLORS.cyan,
       CANVAS_COLORS.textMain,
-      11
+      isCompact ? 10 : 11
     );
-  }, [mode, activeIdx, rows, tick]);
+  }, [mode, activeIdx, rows, drawWidth, isCompact]);
 
   return (
-    <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-[#18181b]">ウィンドウ関数フレーム可視化</span>
-          <div className="inline-flex rounded-md border border-[#d4d4d0] bg-[#f1f1ee] p-0.5">
+          <span className="text-xs font-bold text-[#1D1D1F]">ウィンドウ関数フレーム可視化</span>
+          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
             <button
               type="button"
               onClick={() => {
                 setMode('moving-avg');
                 setActiveIdx(0);
               }}
-              className={`rounded px-2.5 py-1 text-[11px] font-semibold ${
-                mode === 'moving-avg' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                mode === 'moving-avg' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
               R7秋: 移動平均(ROWS)
@@ -226,8 +223,8 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
                 setMode('rank-compare');
                 setActiveIdx(0);
               }}
-              className={`rounded px-2.5 py-1 text-[11px] font-semibold ${
-                mode === 'rank-compare' ? 'bg-white text-[#18181b] shadow-xs' : 'text-[#52525b]'
+              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                mode === 'rank-compare' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
               R6秋: RANK vs DENSE_RANK
@@ -239,18 +236,18 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
           <button
             type="button"
             onClick={() => setPlaying((p) => !p)}
-            className={`rounded-md px-3 py-1 text-xs font-semibold ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               playing
-                ? 'bg-[#be123c] text-white'
-                : 'bg-[#18181b] text-white hover:bg-[#27272a]'
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-[#007AFF] text-white hover:bg-[#0066D6]'
             }`}
           >
-            {playing ? '停止' : '自動ステップ再生'}
+            {playing ? '停止' : '自動再生'}
           </button>
           <button
             type="button"
             onClick={() => setActiveIdx((prev) => (prev + 1) % rows.length)}
-            className="rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1 text-xs font-semibold text-[#18181b] hover:bg-[#f1f1ee]"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#1D1D1F] hover:bg-[#F5F5F7]"
           >
             次の行 →
           </button>
@@ -259,10 +256,15 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
 
       <div
         ref={containerRef}
-        className="w-full overflow-hidden rounded-md border border-[#1e293b] bg-[#0f172a]"
+        className="w-full overflow-x-auto rounded-lg border border-slate-800 bg-[#0f172a]"
       >
-        <canvas ref={canvasRef} className="block w-full" />
+        <canvas ref={canvasRef} className="block" />
       </div>
+      {drawWidth > containerWidth && (
+        <div className="text-right text-[11px] text-[#6E6E73]">
+          左右にスワイプして全体を表示できます
+        </div>
+      )}
     </div>
   );
 };

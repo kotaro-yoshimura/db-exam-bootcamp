@@ -1,5 +1,6 @@
 // モジュール2：実機SQL道場（sql.js WASM ＋ オフライン自動フォールバック ＋ ウィンドウ関数可視化）
-import React, { useState, useEffect } from 'react';
+// iPad/Mac(md以上): 左右2分割(md:grid-cols-2) ／ iPhone(md未満): スティッキー3セグメント切替
+import React, { useState, useEffect, useRef } from 'react';
 import { SQL_DRILLS } from '../../data/sqlDrills';
 import type { SqlQueryResult } from '../../types/exam';
 import type { StudyStore } from '../../state/useStudyStore';
@@ -9,6 +10,8 @@ import { WindowFrameCanvas } from './WindowFrameCanvas';
 interface Props {
   store: StudyStore;
 }
+
+type MobileSqlPane = 'problem' | 'editor' | 'explanation';
 
 export const SqlDojo: React.FC<Props> = ({ store }) => {
   const [drillIdx, setDrillIdx] = useState(0);
@@ -24,6 +27,24 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
+
+  // iPhone用セグメント切替（タブごとのスクロール位置を記憶して復元）
+  const [mobilePane, setMobilePane] = useState<MobileSqlPane>('problem');
+  const paneScrollRef = useRef<Record<MobileSqlPane, number>>({
+    problem: 0,
+    editor: 0,
+    explanation: 0,
+  });
+
+  const handleSwitchMobilePane = (next: MobileSqlPane) => {
+    if (next === mobilePane) return;
+    paneScrollRef.current[mobilePane] = window.scrollY;
+    setMobilePane(next);
+    const savedY = paneScrollRef.current[next] ?? 0;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: savedY, behavior: 'auto' });
+    });
+  };
 
   useEffect(() => {
     let active = true;
@@ -44,6 +65,7 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
     setErrorMsg(null);
     setIsCorrect(null);
     setShowAnswer(false);
+    paneScrollRef.current = { problem: 0, editor: 0, explanation: 0 };
   };
 
   const handleExecute = async () => {
@@ -75,27 +97,21 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
   const solvedCount = store.state.solvedSqlDrills.length;
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-4">
       {/* ヘッダ ＆ エンジン状態 */}
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#e4e4e0] pb-3">
-        <div>
-          <div className="font-mono text-[11px] uppercase tracking-wider text-[#71717a]">
-            02 / SQL WORKBENCH
-          </div>
-          <h2 className="mt-0.5 text-xl font-bold tracking-tight text-[#18181b]">
-            実機SQL道場（{solvedCount}/{SQL_DRILLS.length} 問クリア）
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-200 pb-3">
+        <div className="flex items-baseline gap-2.5">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
+            SQL道場
           </h2>
+          <span className="font-mono text-xs font-semibold tabular-nums text-[#6E6E73]">
+            {solvedCount}/{SQL_DRILLS.length} 問クリア
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className={`rounded-md border px-2.5 py-1 font-mono text-[11px] font-semibold ${
-              engineMode === 'wasm'
-                ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'
-                : engineMode === 'offline-fallback'
-                  ? 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]'
-                  : 'border-[#e4e4e0] bg-white text-[#71717a]'
-            }`}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-[11px] font-medium text-[#1D1D1F]"
             title={engineReason}
           >
             {engineMode === 'wasm'
@@ -104,20 +120,20 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                 ? 'オフライン評価モード'
                 : '初期化中...'}
           </span>
-          <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1 text-xs text-[#52525b]">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-[#6E6E73]">
             <input
               type="checkbox"
               checked={forceOffline}
               onChange={(e) => setForceOffline(e.target.checked)}
-              className="accent-[#18181b]"
+              className="accent-[#007AFF]"
             />
-            <span>オフライン強制テスト</span>
+            <span>オフラインテスト</span>
           </label>
         </div>
       </div>
 
-      {/* 問題セレクタ */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {/* 問題セレクタ（モバイルは横スクロールチップ、md以上はグリッド） */}
+      <div className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
         {SQL_DRILLS.map((d, idx) => {
           const solved = store.state.solvedSqlDrills.includes(d.id);
           const active = idx === drillIdx;
@@ -126,53 +142,93 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
               key={d.id}
               type="button"
               onClick={() => handleSelectProblem(idx)}
-              className={`rounded-lg border p-3 text-left transition ${
+              className={`min-w-[210px] shrink-0 rounded-lg border p-3 text-left transition md:min-w-0 ${
                 active
-                  ? 'border-[#18181b] bg-white'
-                  : 'border-[#e4e4e0] bg-white/60 hover:border-[#a1a1aa] hover:bg-white'
+                  ? 'border-[#007AFF] bg-white ring-1 ring-[#007AFF]/20'
+                  : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-white'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[11px] font-semibold text-[#1d4ed8]">
+                <span className="font-mono text-[11px] font-semibold tabular-nums text-[#6E6E73]">
                   {d.year} ・ {d.difficulty}
                 </span>
                 {solved && (
-                  <span className="rounded border border-[#bbf7d0] bg-[#f0fdf4] px-1.5 py-0.5 text-[10px] font-semibold text-[#15803d]">
+                  <span className="rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-[#007AFF]">
                     合格済
                   </span>
                 )}
               </div>
-              <div className="mt-1 text-sm font-bold text-[#18181b]">{d.title}</div>
-              <div className="mt-0.5 text-[11px] text-[#71717a]">{d.examSection}</div>
+              <div className="mt-1 text-[13px] font-bold text-[#1D1D1F]">{d.title}</div>
+              <div className="mt-0.5 text-[11px] text-[#6E6E73]">{d.examSection}</div>
             </button>
           );
         })}
       </div>
 
-      {/* 設問・データ表 ＋ エディタ・実行結果 */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+      {/* iPhone用スティッキー・セグメントコントロール（md未満のみ） */}
+      <div className="sticky top-12 z-20 -mx-4 border-b border-slate-200/80 bg-[#F5F5F7]/95 px-4 py-2 backdrop-blur-md md:hidden">
+        <div
+          role="tablist"
+          aria-label="SQL道場ペイン切替"
+          className="grid grid-cols-3 gap-1 rounded-lg bg-[#E5E5EA]/90 p-1"
+        >
+          {(
+            [
+              { id: 'problem', label: '問題・図表' },
+              { id: 'editor', label: '解答・エディタ' },
+              { id: 'explanation', label: '解説' },
+            ] as const
+          ).map((seg) => {
+            const active = mobilePane === seg.id;
+            return (
+              <button
+                key={seg.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => handleSwitchMobilePane(seg.id)}
+                className={`rounded-md py-1.5 text-xs font-semibold transition ${
+                  active
+                    ? 'bg-white text-[#1D1D1F] shadow-xs'
+                    : 'text-[#6E6E73] active:text-[#1D1D1F]'
+                }`}
+              >
+                {seg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* メイン2ペイン：md以上は md:grid-cols-2、md未満はセグメント表示 */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
         {/* 左ペイン：設問＆サンプル表 */}
-        <div className="lg:col-span-5">
-          <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-3">
-            <div className="flex items-center justify-between text-xs text-[#71717a]">
-              <span className="font-semibold text-[#18181b]">{problem.examSection}</span>
-              <span className="font-mono">{problem.year}</span>
+        <div className={mobilePane === 'problem' ? 'block space-y-4' : 'hidden md:block space-y-4'}>
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs text-[#6E6E73]">
+              <span className="font-semibold text-[#1D1D1F]">{problem.examSection}</span>
+              <span className="font-mono tabular-nums">{problem.year}</span>
             </div>
-            <h3 className="text-base font-bold text-[#18181b]">{problem.title}</h3>
-            <p className="text-xs sm:text-sm text-[#3f3f46] leading-relaxed">{problem.description}</p>
+            <h3 className="text-base font-bold text-[#1D1D1F]">{problem.title}</h3>
+            <p className="text-[13px] sm:text-sm text-[#1D1D1F]/90 leading-relaxed">
+              {problem.description}
+            </p>
 
             <div className="space-y-2.5 pt-2">
-              <div className="text-xs font-bold text-[#52525b]">初期サンプルテーブル</div>
+              <div className="text-xs font-semibold text-[#6E6E73]">初期サンプルテーブル</div>
               {Object.entries(problem.offlineTables).map(([tName, tRows]) => (
-                <div key={tName} className="overflow-x-auto rounded-md border border-[#e4e4e0] bg-white">
-                  <div className="border-b border-[#e4e4e0] bg-[#f6f6f4] px-3 py-1.5 font-mono text-xs font-bold text-[#18181b]">
+                <div
+                  key={tName}
+                  className="overflow-x-auto rounded-lg border border-slate-200 bg-white"
+                >
+                  <div className="border-b border-slate-200 bg-[#F5F5F7] px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-[#1D1D1F]">
                     {tName}（{tRows.length}行）
                   </div>
-                  <table className="w-full text-left text-xs font-mono">
+                  <table className="w-full text-left font-mono text-xs tabular-nums">
                     <thead>
-                      <tr className="border-b border-[#e4e4e0] text-[#71717a] bg-[#fafafa]">
+                      <tr className="border-b border-slate-200 bg-slate-50/70 text-[#6E6E73]">
                         {Object.keys(tRows[0] || {}).map((col) => (
-                          <th key={col} className="px-2.5 py-1.5 font-semibold">
+                          <th key={col} className="whitespace-nowrap px-2.5 py-1.5 font-semibold">
                             {col}
                           </th>
                         ))}
@@ -180,10 +236,13 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                     </thead>
                     <tbody>
                       {tRows.map((r, ri) => (
-                        <tr key={ri} className="border-b border-[#f1f1ee] last:border-0 text-[#18181b]">
+                        <tr
+                          key={ri}
+                          className="border-b border-slate-100 last:border-0 text-[#1D1D1F]"
+                        >
                           {Object.values(r).map((v, ci) => (
-                            <td key={ci} className="px-2.5 py-1">
-                              {v === null ? 'NULL' : String(v)}
+                            <td key={ci} className="whitespace-nowrap px-2.5 py-1">
+                              {v === null ? <span className="text-[#6E6E73]">NULL</span> : String(v)}
                             </td>
                           ))}
                         </tr>
@@ -196,18 +255,18 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
           </div>
         </div>
 
-        {/* 右ペイン：SQLエディタ＆結果 */}
-        <div className="lg:col-span-7">
-          <div className="rounded-lg border border-[#e4e4e0] bg-white p-4 space-y-3">
+        {/* 右ペイン：SQLエディタ＆実行結果 */}
+        <div className={mobilePane === 'editor' ? 'block space-y-4' : 'hidden md:block space-y-4'}>
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold text-[#18181b]">
+              <span className="text-xs font-bold text-[#1D1D1F]">
                 SQLエディタ（Cmd / Ctrl + Enter で実行）
               </span>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
                   onClick={() => setSqlText(problem.starterSql)}
-                  className="rounded-md border border-[#d4d4d0] bg-white px-2.5 py-1 text-xs text-[#52525b] hover:bg-[#f1f1ee]"
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
                 >
                   初期文に戻す
                 </button>
@@ -217,14 +276,14 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                     setSqlText(problem.answerSql);
                     setShowAnswer(true);
                   }}
-                  className="rounded-md border border-[#d4d4d0] bg-[#f6f6f4] px-2.5 py-1 text-xs font-semibold text-[#18181b] hover:bg-[#e4e4e0]"
+                  className="rounded-lg border border-slate-200 bg-[#F5F5F7] px-2.5 py-1 text-xs font-semibold text-[#1D1D1F] hover:bg-slate-200/70"
                 >
                   模範SQLを貼付
                 </button>
               </div>
             </div>
 
-            {/* コードエディタ（開発ツール枠としてダーク維持） */}
+            {/* コードエディタ（iPhone自動ズーム防止のため text-base md:text-sm） */}
             <textarea
               value={sqlText}
               onChange={(e) => setSqlText(e.target.value)}
@@ -234,9 +293,9 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                   handleExecute();
                 }
               }}
-              rows={11}
+              rows={10}
               spellCheck={false}
-              className="w-full rounded-md border border-[#1e293b] bg-[#0f172a] p-3.5 font-mono text-xs sm:text-sm leading-relaxed text-[#e2e8f0] focus:border-[#38bdf8] focus:outline-none"
+              className="w-full rounded-lg border border-slate-800 bg-[#0f172a] p-3.5 font-mono text-base md:text-sm leading-relaxed text-[#e2e8f0] focus:border-[#007AFF] focus:outline-none"
             />
 
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -244,7 +303,7 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                 type="button"
                 disabled={running}
                 onClick={handleExecute}
-                className="rounded-md bg-[#18181b] px-5 py-2 text-xs font-semibold text-white hover:bg-[#27272a] disabled:opacity-50 transition"
+                className="rounded-lg bg-[#007AFF] px-5 py-2 text-xs font-semibold text-white hover:bg-[#0066D6] disabled:opacity-50 transition"
               >
                 {running ? '実行中...' : 'SQLを実行・採点'}
               </button>
@@ -252,14 +311,14 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
               <button
                 type="button"
                 onClick={() => setShowAnswer((s) => !s)}
-                className="rounded-md border border-[#d4d4d0] bg-white px-3 py-2 text-xs font-semibold text-[#52525b] hover:bg-[#f1f1ee]"
+                className="hidden md:inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
               >
                 {showAnswer ? '解説を閉じる' : '解説・期待結果を表示'}
               </button>
             </div>
 
             {errorMsg && (
-              <div className="rounded-md border border-[#fecdd3] bg-[#fff1f2] p-3 text-xs font-mono text-[#9f1239]">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 font-mono text-xs text-red-700">
                 {errorMsg}
               </div>
             )}
@@ -267,10 +326,10 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
             {result && (
               <div className="space-y-2.5">
                 <div
-                  className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs font-semibold ${
+                  className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
                     isCorrect
-                      ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'
-                      : 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]'
+                      ? 'border-sky-200 bg-sky-50 text-[#007AFF]'
+                      : 'border-amber-200 bg-amber-50 text-amber-800'
                   }`}
                 >
                   <span>
@@ -278,19 +337,19 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                       ? '期待結果と完全一致（合格）'
                       : '実行完了（期待結果と差分あり：列数・並び順・計算式を確認）'}
                   </span>
-                  <span className="font-mono text-[11px] opacity-80">
+                  <span className="font-mono text-[11px] tabular-nums opacity-85">
                     [{result.engine}] {result.executionMs}ms / {result.rows.length}行
                   </span>
                 </div>
 
-                {result.note && <p className="text-[11px] text-[#71717a]">{result.note}</p>}
+                {result.note && <p className="text-[11px] text-[#6E6E73]">{result.note}</p>}
 
-                <div className="overflow-x-auto rounded-md border border-[#e4e4e0] bg-white">
-                  <table className="w-full text-left text-xs font-mono">
+                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                  <table className="w-full text-left font-mono text-xs tabular-nums">
                     <thead>
-                      <tr className="border-b border-[#e4e4e0] bg-[#f6f6f4] text-[#18181b]">
+                      <tr className="border-b border-slate-200 bg-[#F5F5F7] text-[#1D1D1F]">
                         {result.columns.map((c, idx) => (
-                          <th key={`${c}-${idx}`} className="px-3 py-2 font-bold">
+                          <th key={`${c}-${idx}`} className="whitespace-nowrap px-3 py-2 font-bold">
                             {c}
                           </th>
                         ))}
@@ -298,10 +357,17 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                     </thead>
                     <tbody>
                       {result.rows.map((row, ri) => (
-                        <tr key={ri} className="border-b border-[#f1f1ee] last:border-0 text-[#18181b]">
+                        <tr
+                          key={ri}
+                          className="border-b border-slate-100 last:border-0 text-[#1D1D1F]"
+                        >
                           {row.map((cell, ci) => (
-                            <td key={ci} className="px-3 py-1.5">
-                              {cell === null ? <span className="text-[#a1a1aa]">NULL</span> : String(cell)}
+                            <td key={ci} className="whitespace-nowrap px-3 py-1.5">
+                              {cell === null ? (
+                                <span className="text-[#6E6E73]">NULL</span>
+                              ) : (
+                                String(cell)
+                              )}
                             </td>
                           ))}
                         </tr>
@@ -312,19 +378,20 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
               </div>
             )}
 
+            {/* デスクトップ用トグル解説 */}
             {showAnswer && (
-              <div className="rounded-md border border-[#e4e4e0] bg-[#f6f6f4] p-3.5 space-y-2 text-xs">
-                <div className="font-bold text-[#18181b]">午後試験の重要ポイント解説</div>
-                <p className="text-[#3f3f46] leading-relaxed">{problem.explanation}</p>
-                <div className="pt-1 font-bold text-[#52525b]">
-                  期待出力（{problem.expectedResult.rows.length}行）
+              <div className="hidden md:block rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 space-y-2.5 text-xs">
+                <div className="font-bold text-[#1D1D1F]">午後試験の重要ポイント解説</div>
+                <p className="text-[#1D1D1F]/90 leading-relaxed">{problem.explanation}</p>
+                <div className="pt-1 font-bold text-[#6E6E73]">
+                  期待出力（<span className="font-mono tabular-nums">{problem.expectedResult.rows.length}</span>行）
                 </div>
-                <div className="overflow-x-auto rounded border border-[#e4e4e0] bg-white">
-                  <table className="w-full text-left text-[11px] font-mono">
+                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                  <table className="w-full text-left font-mono text-[11px] tabular-nums">
                     <thead>
-                      <tr className="border-b border-[#e4e4e0] bg-[#fafafa] text-[#52525b]">
+                      <tr className="border-b border-slate-200 bg-slate-50 text-[#6E6E73]">
                         {problem.expectedResult.columns.map((c) => (
-                          <th key={c} className="px-2.5 py-1">
+                          <th key={c} className="whitespace-nowrap px-2.5 py-1.5">
                             {c}
                           </th>
                         ))}
@@ -332,9 +399,9 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                     </thead>
                     <tbody>
                       {problem.expectedResult.rows.map((r, ri) => (
-                        <tr key={ri} className="border-b border-[#f1f1ee] last:border-0 text-[#18181b]">
+                        <tr key={ri} className="border-b border-slate-100 last:border-0 text-[#1D1D1F]">
                           {r.map((v, ci) => (
-                            <td key={ci} className="px-2.5 py-1">
+                            <td key={ci} className="whitespace-nowrap px-2.5 py-1">
                               {v === null ? 'NULL' : String(v)}
                             </td>
                           ))}
@@ -347,11 +414,75 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
             )}
           </div>
         </div>
+
+        {/* モバイル用「解説」セグメント専用パネル（md未満かつ解説選択時のみ表示） */}
+        <div className={mobilePane === 'explanation' ? 'block md:hidden' : 'hidden'}>
+          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#1D1D1F]">午後試験の重要ポイント解説</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-[#1D1D1F]/90">
+                {problem.explanation}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#6E6E73]">模範SQL</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSqlText(problem.answerSql);
+                    handleSwitchMobilePane('editor');
+                  }}
+                  className="text-xs font-semibold text-[#007AFF]"
+                >
+                  エディタへ貼り付けて実行 →
+                </button>
+              </div>
+              <pre className="overflow-x-auto rounded-lg border border-slate-800 bg-[#0f172a] p-3 font-mono text-xs leading-relaxed text-[#e2e8f0]">
+                {problem.answerSql}
+              </pre>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="text-xs font-bold text-[#6E6E73]">
+                期待出力（<span className="font-mono tabular-nums">{problem.expectedResult.rows.length}</span>行）
+              </div>
+              <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                <table className="w-full text-left font-mono text-xs tabular-nums">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-[#F5F5F7] text-[#6E6E73]">
+                      {problem.expectedResult.columns.map((c) => (
+                        <th key={c} className="whitespace-nowrap px-2.5 py-1.5">
+                          {c}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {problem.expectedResult.rows.map((r, ri) => (
+                      <tr key={ri} className="border-b border-slate-100 last:border-0 text-[#1D1D1F]">
+                        {r.map((v, ci) => (
+                          <td key={ci} className="whitespace-nowrap px-2.5 py-1">
+                            {v === null ? 'NULL' : String(v)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <WindowFrameCanvas
-        preset={problem.windowPresetId === 'rank-compare' ? 'rank-compare' : 'moving-avg'}
-      />
+      {/* ウィンドウ関数フレーム可視化Canvas（モバイルでは「問題・図表」と「解説」で表示、md以上は常時表示） */}
+      <div className={mobilePane === 'editor' ? 'hidden md:block' : 'block'}>
+        <WindowFrameCanvas
+          preset={problem.windowPresetId === 'rank-compare' ? 'rank-compare' : 'moving-avg'}
+        />
+      </div>
     </section>
   );
 };
