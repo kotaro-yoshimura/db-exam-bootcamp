@@ -43,15 +43,13 @@ export const SimulatorLab: React.FC<Props> = ({ store }) => {
 
   return (
     <section className="space-y-4">
-      <div className="border-b border-slate-200 pb-3">
-        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
-          図解ラボ
-        </h2>
+      <div className="pb-1">
+        <h2 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">図解ラボ</h2>
         <p className="mt-0.5 text-xs text-[#6E6E73]">{currentMeta.desc}</p>
       </div>
 
-      {/* 3大シミュレーター切替（iOS風セグメントバー） */}
-      <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#E5E5EA]/90 p-1">
+      {/* 3大シミュレーター切替（本物iOSセグメントバー） */}
+      <div className="grid grid-cols-3 gap-0.5 rounded-[8px] bg-black/[0.07] p-[2px]">
         {LAB_TABS.map((tab) => {
           const isActive = activeLab === tab.id;
           return (
@@ -59,9 +57,9 @@ export const SimulatorLab: React.FC<Props> = ({ store }) => {
               key={tab.id}
               type="button"
               onClick={() => setActiveLab(tab.id)}
-              className={`rounded-md px-2 py-2 text-center text-xs font-semibold transition ${
+              className={`rounded-[6.5px] px-2 py-1.5 text-center text-xs font-semibold transition ${
                 isActive
-                  ? 'bg-white text-[#1D1D1F] shadow-xs'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                   : 'text-[#6E6E73] hover:text-[#1D1D1F]'
               }`}
             >

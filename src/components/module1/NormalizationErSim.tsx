@@ -40,7 +40,7 @@ const KEY_ROLE_CLASS: Record<KeyRole, string> = {
 
 /** 関係スキーマを試験表記の下線付きでレンダリングする共通表示部品 */
 export const SchemaLineDisplay: React.FC<{ schema: RelationSchema }> = ({ schema }) => (
-  <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3">
+  <div className="rounded-[8px] bg-[#F2F2F7] p-3">
     <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-2 text-sm leading-relaxed">
       <span className="font-bold text-[#1D1D1F]">{schema.tableName}</span>
       <span className="text-[#6E6E73]">(</span>
@@ -488,15 +488,24 @@ export const NormalizationErSim: React.FC<Props> = ({ store }) => {
     });
   }, [subTab, activePattern, toggleVariant, erDrawW, erCompact]);
 
+  const firstUnsolvedCaseIdx = NORMALIZATION_CASES.findIndex(
+    (c) => !store.state.solvedSchemaQuizzes.includes(c.id)
+  );
+  const nextUnsolvedCaseIdx = NORMALIZATION_CASES.findIndex(
+    (c, i) => i !== caseIdx && !store.state.solvedSchemaQuizzes.includes(c.id)
+  );
+
   return (
     <div className="space-y-4">
       {/* サブタブ */}
-      <div className="inline-flex w-full sm:w-auto rounded-lg bg-[#E5E5EA]/80 p-0.5">
+      <div className="inline-flex w-full sm:w-auto rounded-[8px] bg-black/[0.06] p-[2px]">
         <button
           type="button"
           onClick={() => setSubTab('norm')}
-          className={`flex-1 sm:flex-none rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-            subTab === 'norm' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73] hover:text-[#1D1D1F]'
+          className={`flex-1 sm:flex-none rounded-[6.5px] px-3.5 py-1.5 text-xs font-semibold transition ${
+            subTab === 'norm'
+              ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+              : 'text-[#6E6E73] hover:text-[#1D1D1F]'
           }`}
         >
           正規化・FD分解 ＆ 下線採点
@@ -504,8 +513,10 @@ export const NormalizationErSim: React.FC<Props> = ({ store }) => {
         <button
           type="button"
           onClick={() => setSubTab('er')}
-          className={`flex-1 sm:flex-none rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-            subTab === 'er' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73] hover:text-[#1D1D1F]'
+          className={`flex-1 sm:flex-none rounded-[6.5px] px-3.5 py-1.5 text-xs font-semibold transition ${
+            subTab === 'er'
+              ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+              : 'text-[#6E6E73] hover:text-[#1D1D1F]'
           }`}
         >
           E-R図5大パターン連動
@@ -518,36 +529,35 @@ export const NormalizationErSim: React.FC<Props> = ({ store }) => {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {NORMALIZATION_CASES.map((c, idx) => {
               const solved = store.state.solvedSchemaQuizzes.includes(c.id);
+              const isRec = !solved && idx === firstUnsolvedCaseIdx;
               return (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => handleSelectCase(idx)}
-                  className={`rounded-lg border p-3 text-left transition ${
-                    idx === caseIdx
-                      ? 'border-[#007AFF] bg-white ring-1 ring-[#007AFF]/20'
-                      : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-white'
+                  className={`ios-group p-3 text-left active:opacity-75 transition ${
+                    idx === caseIdx ? 'ring-2 ring-[#007AFF]' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] font-bold tabular-nums text-[#007AFF]">
+                    <span className="font-mono text-[11px] font-semibold tabular-nums text-[#007AFF]">
                       {c.year}
                     </span>
-                    {solved && (
-                      <span className="rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-[#007AFF]">
-                        満点済
-                      </span>
-                    )}
+                    {solved ? (
+                      <span className="text-[11px] font-semibold text-[#007AFF]">満点済</span>
+                    ) : isRec ? (
+                      <span className="text-[11px] font-semibold text-[#007AFF]">次におすすめ</span>
+                    ) : null}
                   </div>
-                  <div className="mt-1 text-sm font-bold text-[#1D1D1F]">{c.title}</div>
-                  <div className="mt-0.5 text-[11px] text-[#6E6E73]">{c.examSection}</div>
+                  <div className="mt-1 text-sm font-semibold text-[#1D1D1F]">{c.title}</div>
+                  <div className="mt-0.5 text-[11px] text-[#8E8E93]">{c.examSection}</div>
                 </button>
               );
             })}
           </div>
 
           {/* 業務シナリオと正規化ステップ */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+          <div className="ios-group p-4 space-y-4">
             <p className="text-sm text-[#1D1D1F]/90 leading-relaxed">
               <span className="font-bold text-[#1D1D1F]">業務シナリオ：</span>
               {activeCase.scenario}
@@ -606,7 +616,7 @@ export const NormalizationErSim: React.FC<Props> = ({ store }) => {
           </div>
 
           {/* 下線タップ採点クイズ */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
+          <div className="ios-group p-4 sm:p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-[#1D1D1F]">
@@ -638,17 +648,19 @@ export const NormalizationErSim: React.FC<Props> = ({ store }) => {
                       key={attr.name}
                       type="button"
                       onClick={() => handleToggleAttrRole(idx)}
-                      className={`flex flex-col items-center rounded-lg border px-3 py-2 transition active:scale-95 ${
+                      className={`flex flex-col items-center rounded-lg border border-b-2 px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition active:scale-95 ${
                         isCorrectAttr
                           ? 'border-emerald-600 bg-emerald-50'
                           : isWrongAttr
                             ? 'border-red-500 bg-red-50'
-                            : 'border-slate-200 bg-white hover:border-[#007AFF]'
+                            : chosen !== 'none'
+                              ? 'border-[#007AFF]/60 bg-sky-50/40 hover:border-[#007AFF]'
+                              : 'border-slate-300 bg-white hover:border-[#007AFF]'
                       }`}
                     >
                       <span className={`text-sm ${KEY_ROLE_CLASS[chosen]}`}>{attr.name}</span>
-                      <span className="mt-1 text-[10px] text-[#6E6E73]">
-                        {KEY_ROLE_LABEL[chosen]}
+                      <span className="mt-1 text-[10px] font-medium text-[#6E6E73]">
+                        {KEY_ROLE_LABEL[chosen]} ↻
                       </span>
                     </button>
                   );
@@ -700,6 +712,17 @@ export const NormalizationErSim: React.FC<Props> = ({ store }) => {
                   {activeCase.quizSchema.explanation}
                 </p>
                 <SchemaLineDisplay schema={activeCase.quizSchema} />
+                {quizResult.perfect && nextUnsolvedCaseIdx >= 0 && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCase(nextUnsolvedCaseIdx)}
+                      className="rounded-lg bg-[#007AFF] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#0066D6] active:scale-95 transition"
+                    >
+                      次の未クリアケースへ進む（{NORMALIZATION_CASES[nextUnsolvedCaseIdx].year}） →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -727,7 +750,7 @@ export const NormalizationErSim: React.FC<Props> = ({ store }) => {
             ))}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+          <div className="ios-group p-4 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-base font-bold text-[#1D1D1F]">{activePattern.title}</h3>

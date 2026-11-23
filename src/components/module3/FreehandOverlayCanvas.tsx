@@ -394,15 +394,17 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-3">
+    <div className="ios-group p-3.5 space-y-3">
       {/* ツールバー */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
+        <div className="inline-flex rounded-[8px] bg-black/[0.06] p-[2px]">
           <button
             type="button"
             onClick={() => setViewMode('er')}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-              viewMode === 'er' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+            className={`rounded-[6.5px] px-2.5 py-1 text-xs font-semibold transition ${
+              viewMode === 'er'
+                ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                : 'text-[#6E6E73]'
             }`}
           >
             問題E-R図
@@ -410,8 +412,10 @@ export const FreehandOverlayCanvas: React.FC<Props> = ({ exam }) => {
           <button
             type="button"
             onClick={() => setViewMode('a4memo')}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-              viewMode === 'a4memo' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+            className={`rounded-[6.5px] px-2.5 py-1 text-xs font-semibold transition ${
+              viewMode === 'a4memo'
+                ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                : 'text-[#6E6E73]'
             }`}
           >
             A4メモお手本

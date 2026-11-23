@@ -95,82 +95,82 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
   };
 
   const solvedCount = store.state.solvedSqlDrills.length;
+  const firstUnsolvedIdx = SQL_DRILLS.findIndex(
+    (d) => !store.state.solvedSqlDrills.includes(d.id)
+  );
+  const nextUnsolvedIdx = SQL_DRILLS.findIndex(
+    (d, i) => i !== drillIdx && !store.state.solvedSqlDrills.includes(d.id)
+  );
 
   return (
     <section className="space-y-4">
-      {/* ヘッダ ＆ エンジン状態 */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-200 pb-3">
+      {/* ヘッダ ＆ エンジン状態（枠なしシンプル） */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
         <div className="flex items-baseline gap-2.5">
-          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
-            SQL道場
-          </h2>
-          <span className="font-mono text-xs font-semibold tabular-nums text-[#6E6E73]">
-            {solvedCount}/{SQL_DRILLS.length} 問クリア
+          <h2 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">SQL道場</h2>
+          <span className="font-mono text-xs font-medium tabular-nums text-[#8E8E93]">
+            {solvedCount}/{SQL_DRILLS.length} クリア
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-mono text-[11px] font-medium text-[#1D1D1F]"
-            title={engineReason}
-          >
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <span className="font-mono text-[11px] text-[#6E6E73]" title={engineReason}>
             {engineMode === 'wasm'
-              ? 'SQLite WASM 稼働中'
+              ? 'SQLite WASM'
               : engineMode === 'offline-fallback'
-                ? 'オフライン評価モード'
+                ? 'オフライン評価'
                 : '初期化中...'}
           </span>
-          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-[#6E6E73]">
+          <label className="flex cursor-pointer items-center gap-1.5 text-[#6E6E73]">
             <input
               type="checkbox"
               checked={forceOffline}
               onChange={(e) => setForceOffline(e.target.checked)}
               className="accent-[#007AFF]"
             />
-            <span>オフラインテスト</span>
+            <span>オフライン</span>
           </label>
         </div>
       </div>
 
-      {/* 問題セレクタ（モバイルは横スクロールチップ、md以上はグリッド） */}
+      {/* 問題セレクタ（ボーダーレス白シート） */}
       <div className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
         {SQL_DRILLS.map((d, idx) => {
           const solved = store.state.solvedSqlDrills.includes(d.id);
           const active = idx === drillIdx;
+          const isRecommended = !solved && idx === firstUnsolvedIdx;
           return (
             <button
               key={d.id}
               type="button"
               onClick={() => handleSelectProblem(idx)}
-              className={`min-w-[210px] shrink-0 rounded-lg border p-3 text-left transition md:min-w-0 ${
-                active
-                  ? 'border-[#007AFF] bg-white ring-1 ring-[#007AFF]/20'
-                  : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-white'
+              className={`ios-group min-w-[205px] shrink-0 p-3 text-left transition active:opacity-75 md:min-w-0 ${
+                active ? 'ring-2 ring-[#007AFF]' : 'hover:bg-white/90'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[11px] font-semibold tabular-nums text-[#6E6E73]">
-                  {d.year} ・ {d.difficulty}
+                <span className="font-mono text-[11px] font-medium tabular-nums text-[#8E8E93]">
+                  {d.year} · {d.difficulty}
                 </span>
-                {solved && (
-                  <span className="rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-[#007AFF]">
-                    合格済
-                  </span>
-                )}
+                {solved ? (
+                  <span className="text-[11px] font-semibold text-[#007AFF]">合格済</span>
+                ) : isRecommended ? (
+                  <span className="text-[11px] font-semibold text-[#007AFF]">次におすすめ</span>
+                ) : null}
               </div>
-              <div className="mt-1 text-[13px] font-bold text-[#1D1D1F]">{d.title}</div>
-              <div className="mt-0.5 text-[11px] text-[#6E6E73]">{d.examSection}</div>
+              <div className="mt-1 text-[13px] font-semibold text-[#1D1D1F]">{d.title}</div>
+              <div className="mt-0.5 text-[11px] text-[#8E8E93]">{d.examSection}</div>
             </button>
           );
         })}
       </div>
 
-      {/* iPhone用スティッキー・セグメントコントロール（md未満のみ） */}
-      <div className="sticky top-12 z-20 -mx-4 border-b border-slate-200/80 bg-[#F5F5F7]/95 px-4 py-2 backdrop-blur-md md:hidden">
+      {/* iPhone用スティッキー・セグメントコントロール（本物iOS UISegmentedControl質感） */}
+      <div className="sticky top-12 z-20 -mx-4 border-b border-black/[0.06] bg-[#F2F2F7]/95 px-4 py-2 backdrop-blur-md md:hidden">
         <div
           role="tablist"
           aria-label="SQL道場ペイン切替"
-          className="grid grid-cols-3 gap-1 rounded-lg bg-[#E5E5EA]/90 p-1"
+          className="grid grid-cols-3 gap-0.5 rounded-[8px] bg-black/[0.07] p-[2px]"
         >
           {(
             [
@@ -187,9 +187,9 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                 role="tab"
                 aria-selected={active}
                 onClick={() => handleSwitchMobilePane(seg.id)}
-                className={`rounded-md py-1.5 text-xs font-semibold transition ${
+                className={`rounded-[6.5px] py-1.5 text-xs font-semibold transition ${
                   active
-                    ? 'bg-white text-[#1D1D1F] shadow-xs'
+                    ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                     : 'text-[#6E6E73] active:text-[#1D1D1F]'
                 }`}
               >
@@ -204,7 +204,7 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
         {/* 左ペイン：設問＆サンプル表 */}
         <div className={mobilePane === 'problem' ? 'block space-y-4' : 'hidden md:block space-y-4'}>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+          <div className="ios-group p-4 space-y-3">
             <div className="flex items-center justify-between text-xs text-[#6E6E73]">
               <span className="font-semibold text-[#1D1D1F]">{problem.examSection}</span>
               <span className="font-mono tabular-nums">{problem.year}</span>
@@ -257,16 +257,16 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
 
         {/* 右ペイン：SQLエディタ＆実行結果 */}
         <div className={mobilePane === 'editor' ? 'block space-y-4' : 'hidden md:block space-y-4'}>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+          <div className="ios-group p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold text-[#1D1D1F]">
+              <span className="text-xs font-semibold text-[#1D1D1F]">
                 SQLエディタ（Cmd / Ctrl + Enter で実行）
               </span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-3 text-xs font-medium">
                 <button
                   type="button"
                   onClick={() => setSqlText(problem.starterSql)}
-                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
+                  className="text-[#6E6E73] hover:text-[#1D1D1F] active:opacity-50"
                 >
                   初期文に戻す
                 </button>
@@ -276,7 +276,7 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                     setSqlText(problem.answerSql);
                     setShowAnswer(true);
                   }}
-                  className="rounded-lg border border-slate-200 bg-[#F5F5F7] px-2.5 py-1 text-xs font-semibold text-[#1D1D1F] hover:bg-slate-200/70"
+                  className="text-[#007AFF] active:opacity-50"
                 >
                   模範SQLを貼付
                 </button>
@@ -341,6 +341,25 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
                     [{result.engine}] {result.executionMs}ms / {result.rows.length}行
                   </span>
                 </div>
+
+                {isCorrect && nextUnsolvedIdx >= 0 && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-[#007AFF]/30 bg-sky-50/50 px-3 py-2">
+                    <span className="text-xs font-medium text-[#1D1D1F]">
+                      次の未クリア問題：{SQL_DRILLS[nextUnsolvedIdx].year}{' '}
+                      {SQL_DRILLS[nextUnsolvedIdx].title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSelectProblem(nextUnsolvedIdx);
+                        handleSwitchMobilePane('problem');
+                      }}
+                      className="shrink-0 rounded-lg bg-[#007AFF] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0066D6] active:scale-95 transition"
+                    >
+                      次へ進む →
+                    </button>
+                  </div>
+                )}
 
                 {result.note && <p className="text-[11px] text-[#6E6E73]">{result.note}</p>}
 
@@ -417,7 +436,7 @@ export const SqlDojo: React.FC<Props> = ({ store }) => {
 
         {/* モバイル用「解説」セグメント専用パネル（md未満かつ解説選択時のみ表示） */}
         <div className={mobilePane === 'explanation' ? 'block md:hidden' : 'hidden'}>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+          <div className="ios-group p-4 space-y-4">
             <div>
               <h3 className="text-sm font-bold text-[#1D1D1F]">午後試験の重要ポイント解説</h3>
               <p className="mt-1.5 text-xs leading-relaxed text-[#1D1D1F]/90">

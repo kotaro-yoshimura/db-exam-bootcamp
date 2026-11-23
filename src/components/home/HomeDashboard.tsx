@@ -1,5 +1,5 @@
-// ホーム画面：1秒で勉強に入れる即アクションダッシュボード（Apple HIG 準拠）
-// 構成：1行ステータスバー → 今週やるべきチェックリスト → クイック再開 → 折りたたみ式コンパクト週切替カレンダー
+// ホーム画面：iOS純正（リマインダー・設定）風のボーダーレス Inset Grouped 構成
+// 囲み枠・入れ子カードを排し、余白・極細ヘアライン・丸型チェックで「押せる場所」と「次の一手」を明確化
 import React, { useState, useMemo } from 'react';
 import type { ModuleId, RoadmapTask } from '../../types/exam';
 import type { StudyStore } from '../../state/useStudyStore';
@@ -7,6 +7,7 @@ import { ROADMAP_WEEKS } from '../../data/roadmap';
 import { FLASHCARDS_200 } from '../../data/flashcards200';
 import { SQL_DRILLS } from '../../data/sqlDrills';
 import { formatLocalYmd } from '../../utils/examDate';
+import { computeNextStudyAction } from '../../utils/nextStudyAction';
 import { buildMonthCalendarRows } from '../module5/RoadmapTracker';
 import { ChevronDownIcon, ChevronRightIcon, ModuleNavIcon } from '../common/NavIcons';
 
@@ -42,6 +43,32 @@ const PRACTICE_INFO: Record<'lab' | 'sql' | 'cbt', { title: string; subtitle: st
 
 const WEEKDAY_SHORT = ['月', '火', '水', '木', '金', '土', '日'];
 
+/** iOSリマインダー風の丸型チェックマーク（SVG fill明示でiOS黒塗り防止） */
+const CircleCheck: React.FC<{ checked: boolean }> = ({ checked }) => (
+  <span
+    aria-hidden="true"
+    className={`mt-0.5 inline-flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-full transition ${
+      checked
+        ? 'bg-[#007AFF] text-white'
+        : 'border-[1.5px] border-[#C7C7CC] bg-white'
+    }`}
+  >
+    {checked && (
+      <svg
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-3 w-3"
+      >
+        <path fill="none" d="M3.5 8.2L6.6 11.2L12.5 4.8" />
+      </svg>
+    )}
+  </span>
+);
+
 export const HomeDashboard: React.FC<Props> = ({
   store,
   daysLeft,
@@ -58,7 +85,6 @@ export const HomeDashboard: React.FC<Props> = ({
 
   const activeWeek = ROADMAP_WEEKS[selectedWeekIdx] || ROADMAP_WEEKS[0];
 
-  // 選択中の週が属する月のミニカレンダーを生成
   const activeYear = Number(activeWeek.startDate.slice(0, 4));
   const activeMonthNum = Number(activeWeek.startDate.slice(5, 7));
   const miniCalRows = useMemo(
@@ -66,7 +92,6 @@ export const HomeDashboard: React.FC<Props> = ({
     [activeYear, activeMonthNum]
   );
 
-  // 進捗メトリクス集計
   const completedSet = useMemo(
     () => new Set(store.state.completedRoadmapTasks),
     [store.state.completedRoadmapTasks]
@@ -83,371 +108,421 @@ export const HomeDashboard: React.FC<Props> = ({
 
   const practiceMeta = PRACTICE_INFO[lastPracticeModule];
 
-  const handleTaskNavigate = (task: RoadmapTask) => {
-    if (!task.targetModule) return;
-    onNavigateModule(task.targetModule);
+  const nextAction = useMemo(
+    () => computeNextStudyAction(store.state, selectedWeekIdx),
+    [store.state, selectedWeekIdx]
+  );
+
+  const handlePrimaryNextAction = () => {
+    if (nextAction.isTextbookTask && nextAction.roadmapTaskId) {
+      if (nextAction.weekIdx !== undefined && nextAction.weekIdx !== selectedWeekIdx) {
+        setSelectedWeekIdx(nextAction.weekIdx);
+      }
+      store.toggleRoadmapTask(nextAction.roadmapTaskId);
+      return;
+    }
+    if (nextAction.targetModule) {
+      onNavigateModule(nextAction.targetModule);
+    }
   };
 
+  const shortStart = activeWeek.startDate.slice(5).replace('-', '/');
+  const shortEnd = activeWeek.endDate.slice(5).replace('-', '/');
+
   return (
-    <section className="space-y-4">
-      {/* 1行コンパクトステータスバー（iPhone: 2×2極小チップ / iPad・Mac: 1行4チップ） */}
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <span className="text-xs text-[#6E6E73]">試験まで</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-[#1D1D1F]">
-            残り{daysLeft}日
-          </span>
+    <section className="space-y-5">
+      {/* 1枚のボーダーレス白ストリップ（4つの浮いた枠付き小カードを廃止し極細縦線で区切る） */}
+      <div className="ios-group grid grid-cols-4 divide-x divide-black/[0.07] overflow-hidden">
+        <div className="px-2 py-2.5 text-center">
+          <div className="text-[10px] font-medium text-[#8E8E93]">残り日数</div>
+          <div className="mt-0.5 font-mono text-[14px] font-bold tabular-nums text-[#1D1D1F]">
+            {daysLeft}
+            <span className="ml-0.5 font-sans text-[10px] font-normal text-[#6E6E73]">日</span>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={() => onNavigateModule('roadmap')}
-          className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-slate-300 transition"
+          className="px-2 py-2.5 text-center transition active:bg-black/[0.04] hover:bg-black/[0.02]"
         >
-          <span className="text-xs text-[#6E6E73]">進捗</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-[#1D1D1F]">
-            {doneTasks}/{allTasks.length}
-            <span className="ml-1 text-[11px] font-normal text-[#6E6E73]">({roadmapPct}%)</span>
-          </span>
+          <div className="text-[10px] font-medium text-[#007AFF]">進捗 ›</div>
+          <div className="mt-0.5 font-mono text-[14px] font-bold tabular-nums text-[#1D1D1F]">
+            {doneTasks}
+            <span className="text-[11px] font-normal text-[#8E8E93]">/{allTasks.length}</span>
+          </div>
         </button>
 
         <button
           type="button"
           onClick={() => onNavigateModule('cards')}
-          className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-slate-300 transition"
+          className="px-2 py-2.5 text-center transition active:bg-black/[0.04] hover:bg-black/[0.02]"
         >
-          <span className="text-xs text-[#6E6E73]">語句</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-[#1D1D1F]">
-            {masteredCards}/{FLASHCARDS_200.length}
-          </span>
+          <div className="text-[10px] font-medium text-[#007AFF]">200語 ›</div>
+          <div className="mt-0.5 font-mono text-[14px] font-bold tabular-nums text-[#1D1D1F]">
+            {masteredCards}
+            <span className="text-[11px] font-normal text-[#8E8E93]">/{FLASHCARDS_200.length}</span>
+          </div>
         </button>
 
         <button
           type="button"
           onClick={() => onNavigateModule('review')}
-          className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-slate-300 transition"
+          className="px-2 py-2.5 text-center transition active:bg-black/[0.04] hover:bg-black/[0.02]"
         >
-          <span className="text-xs text-[#6E6E73]">弱点</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-[#1D1D1F]">
-            {activeWeak.length}件
-          </span>
+          <div className="text-[10px] font-medium text-[#007AFF]">弱点 ›</div>
+          <div className="mt-0.5 font-mono text-[14px] font-bold tabular-nums text-[#1D1D1F]">
+            {activeWeak.length}
+            <span className="ml-0.5 font-sans text-[10px] font-normal text-[#6E6E73]">件</span>
+          </div>
         </button>
       </div>
 
-      {/* ① 今週（Week XX）やるべきチェックリスト */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-[#007AFF] px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-white">
-                Week {String(activeWeek.weekNumber).padStart(2, '0')}
-              </span>
-              <span className="font-mono text-xs tabular-nums text-[#6E6E73]">
-                {activeWeek.startDate} – {activeWeek.endDate}
-              </span>
-              {selectedWeekIdx === detectedWeekIdx && (
-                <span className="rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-[#007AFF]">
-                  今週
-                </span>
-              )}
-              <span className="font-mono text-xs font-semibold tabular-nums text-[#1D1D1F]">
-                {weekDoneCount}/{activeWeek.tasks.length}
-              </span>
+      {/* ★ 次にやること（シート外見出し＋ボーダーレス白シート＋1本だけの主ボタン） */}
+      <div className="space-y-1.5">
+        <div className="flex items-baseline justify-between px-1">
+          <h2 className="ios-section-label">次にやること</h2>
+          <span className="font-mono text-[11px] tabular-nums text-[#8E8E93]">
+            {nextAction.badge}
+          </span>
+        </div>
+
+        <div className="ios-group p-4 space-y-3">
+          <div className="space-y-1">
+            <div className="text-[15px] font-bold leading-snug text-[#1D1D1F]">
+              {nextAction.title}
             </div>
-            <h2 className="mt-1 text-[15px] font-bold tracking-tight text-[#1D1D1F]">
-              {activeWeek.theme}
-            </h2>
+            <p className="text-xs leading-relaxed text-[#6E6E73]">{nextAction.reason}</p>
           </div>
 
-          {/* 前週 / 今週 / 次週 */}
-          <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-[#F5F5F7] p-0.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handlePrimaryNextAction}
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1 rounded-[8px] bg-[#007AFF] px-4 py-2.5 text-[13px] font-semibold text-white active:opacity-80 hover:bg-[#0066D6] transition"
+            >
+              <span>{nextAction.ctaLabel}</span>
+              <ChevronRightIcon className="h-3.5 w-3.5" />
+            </button>
+
+            {!nextAction.isTextbookTask && nextAction.roadmapTaskId && (
+              <button
+                type="button"
+                onClick={() => store.toggleRoadmapTask(nextAction.roadmapTaskId!)}
+                className="text-xs font-medium text-[#007AFF] active:opacity-60 hover:underline"
+              >
+                完了チェックする
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ① 今週（Week XX）のチェックリスト（iOSリマインダー風・枠バッジを全廃） */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <h2 className="ios-section-label shrink-0">
+              <span className="font-mono tabular-nums">
+                Week {String(activeWeek.weekNumber).padStart(2, '0')}
+              </span>
+              {selectedWeekIdx === detectedWeekIdx ? '（今週）' : ''}
+            </h2>
+            <span className="truncate font-mono text-[11px] tabular-nums text-[#8E8E93]">
+              {shortStart}–{shortEnd} · {weekDoneCount}/{activeWeek.tasks.length}
+            </span>
+          </div>
+
+          {/* 枠なしのシンプルな週切替テキスト操作 */}
+          <div className="flex shrink-0 items-center gap-3 text-xs font-medium">
             <button
               type="button"
               disabled={selectedWeekIdx === 0}
               onClick={() => setSelectedWeekIdx((i) => Math.max(0, i - 1))}
-              className="rounded-md px-2.5 py-1 text-xs font-medium text-[#1D1D1F] hover:bg-white disabled:opacity-35 transition"
+              className="text-[#007AFF] disabled:text-[#C7C7CC] active:opacity-50"
             >
-              前週
+              ‹ 前週
             </button>
-            <button
-              type="button"
-              onClick={() => setSelectedWeekIdx(detectedWeekIdx)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                selectedWeekIdx === detectedWeekIdx
-                  ? 'bg-white text-[#007AFF] shadow-xs'
-                  : 'text-[#6E6E73] hover:bg-white'
-              }`}
-            >
-              今週
-            </button>
+            {selectedWeekIdx !== detectedWeekIdx && (
+              <button
+                type="button"
+                onClick={() => setSelectedWeekIdx(detectedWeekIdx)}
+                className="text-[#007AFF] active:opacity-50"
+              >
+                今週
+              </button>
+            )}
             <button
               type="button"
               disabled={selectedWeekIdx === ROADMAP_WEEKS.length - 1}
               onClick={() =>
                 setSelectedWeekIdx((i) => Math.min(ROADMAP_WEEKS.length - 1, i + 1))
               }
-              className="rounded-md px-2.5 py-1 text-xs font-medium text-[#1D1D1F] hover:bg-white disabled:opacity-35 transition"
+              className="text-[#007AFF] disabled:text-[#C7C7CC] active:opacity-50"
             >
-              次週
+              次週 ›
             </button>
           </div>
         </div>
 
-        {/* テキスト担当範囲＆到達目標（コンパクト1帯） */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-[#F5F5F7]/70 px-4 py-2 text-xs">
-          <div className="text-[#1D1D1F]">
-            <span className="font-semibold text-[#6E6E73]">テキスト範囲：</span>
-            <span className="font-medium">{activeWeek.textbookRange}</span>
+        <div className="ios-group overflow-hidden">
+          {/* 週テーマ＆テキスト範囲（帯や枠なしのすっきりした上部行） */}
+          <div className="border-b border-black/[0.07] px-4 py-3">
+            <div className="text-[14px] font-semibold text-[#1D1D1F]">{activeWeek.theme}</div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-[#6E6E73]">
+              <span>テキスト：{activeWeek.textbookRange}</span>
+              <span className="font-mono tabular-nums">
+                過去問：{activeWeek.recommendedYears.join(' / ')}
+              </span>
+              <span className="font-mono tabular-nums">全体 {roadmapPct}%</span>
+            </div>
           </div>
-          <div className="font-mono text-[11px] tabular-nums text-[#6E6E73]">
-            過去問：{activeWeek.recommendedYears.join(' / ')}
-          </div>
-        </div>
 
-        {/* チェックリスト本体 */}
-        <div className="divide-y divide-slate-100">
-          {activeWeek.tasks.map((task) => {
-            const checked = completedSet.has(task.id);
-            const catLabel = CAT_LABEL[task.category || 'app'];
-            return (
-              <div
-                key={task.id}
-                className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50/70 transition"
-              >
-                <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-sm leading-snug">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => store.toggleRoadmapTask(task.id)}
-                    className="mt-0.5 h-[18px] w-[18px] shrink-0 rounded accent-[#007AFF]"
-                  />
-                  <span className="min-w-0">
-                    <span className="mr-1.5 inline-block rounded border border-slate-200 bg-[#F5F5F7] px-1.5 py-0.5 align-middle text-[10px] font-semibold text-[#6E6E73]">
-                      {catLabel}
-                    </span>
-                    <span
-                      className={`text-[13px] sm:text-sm ${
-                        checked ? 'line-through text-[#6E6E73]/60' : 'text-[#1D1D1F]'
-                      }`}
-                    >
-                      {task.label}
-                    </span>
-                  </span>
-                </label>
+          {/* リスト本体（iOSリマインダー風インデント付き極細ヘアライン） */}
+          <div>
+            {activeWeek.tasks.map((task, idx) => {
+              const checked = completedSet.has(task.id);
+              const isNext = !checked && nextAction.roadmapTaskId === task.id;
+              const catLabel = CAT_LABEL[task.category || 'app'];
 
-                {task.targetModule && (
+              return (
+                <div
+                  key={task.id}
+                  className={`flex items-start gap-3 pl-4 pr-3.5 transition ${
+                    isNext ? 'bg-[#007AFF]/[0.035]' : ''
+                  }`}
+                >
+                  {/* 丸型チェックボタン */}
                   <button
                     type="button"
-                    onClick={() => handleTaskNavigate(task)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#007AFF] hover:border-[#007AFF]/40 hover:bg-sky-50/60 transition"
+                    role="checkbox"
+                    aria-checked={checked}
+                    aria-label={`${task.label}を${checked ? '未完了に戻す' : '完了にする'}`}
+                    onClick={() => store.toggleRoadmapTask(task.id)}
+                    className="py-3 active:scale-90 transition"
                   >
-                    <span>{MODULE_ACTION_LABEL[task.targetModule]}</span>
-                    <ChevronRightIcon className="h-3.5 w-3.5" />
+                    <CircleCheck checked={checked} />
                   </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
 
-        <div className="border-t border-slate-100 px-4 py-2 text-xs text-[#6E6E73]">
-          到達目標：{activeWeek.goal}
+                  {/* テキスト＋右アクション（左インデント付き下線） */}
+                  <div
+                    className={`flex min-w-0 flex-1 items-center justify-between gap-3 py-3 ${
+                      idx < activeWeek.tasks.length - 1 ? 'border-b border-black/[0.07]' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => store.toggleRoadmapTask(task.id)}
+                      className="min-w-0 flex-1 text-left active:opacity-60"
+                    >
+                      <div
+                        className={`text-[13.5px] leading-snug ${
+                          checked ? 'line-through text-[#8E8E93]' : 'text-[#1D1D1F]'
+                        }`}
+                      >
+                        {task.label}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
+                        <span className="text-[#8E8E93]">{catLabel}</span>
+                        {isNext && (
+                          <span className="font-semibold text-[#007AFF]">· 次はこちら</span>
+                        )}
+                      </div>
+                    </button>
+
+                    {task.targetModule && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigateModule(task.targetModule!)}
+                        className="inline-flex shrink-0 items-center gap-0.5 py-1 pl-2 text-[12px] font-medium text-[#007AFF] active:opacity-50"
+                      >
+                        <span>{MODULE_ACTION_LABEL[task.targetModule]}</span>
+                        <ChevronRightIcon className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-black/[0.07] px-4 py-2.5 text-[11px] leading-relaxed text-[#6E6E73]">
+            到達目標：{activeWeek.goal}
+          </div>
         </div>
       </div>
 
-      {/* ② クイック再開（弱点復習キュー ／ 直近の演習 ／ 200語カード） */}
-      <div className="space-y-2">
-        <h3 className="px-0.5 text-xs font-semibold text-[#6E6E73]">クイック再開</h3>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+      {/* ② クイック再開（iOS「設定」アプリ風の1枚リスト／md以上は3列連結シート） */}
+      <div className="space-y-1.5">
+        <h3 className="ios-section-label px-1">クイック再開</h3>
+
+        <div className="ios-group overflow-hidden divide-y divide-black/[0.07] md:grid md:grid-cols-3 md:divide-y-0 md:divide-x">
           {/* 弱点復習キュー */}
           <button
             type="button"
             onClick={() => onNavigateModule('review')}
-            className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3.5 text-left hover:border-[#007AFF]/50 transition"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-black/[0.02] active:bg-black/[0.05]"
           >
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F5F5F7] text-[#007AFF]">
-                <ModuleNavIcon id="review" className="h-5 w-5" />
-              </div>
+            <div className="flex min-w-0 items-center gap-3">
+              <ModuleNavIcon id="review" className="h-[19px] w-[19px] shrink-0 text-[#007AFF]" />
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-[#1D1D1F]">弱点復習キュー</span>
-                  <span className="font-mono text-xs font-semibold tabular-nums text-[#6E6E73]">
-                    {activeWeak.length}件
-                  </span>
+                <div className="text-[13.5px] font-medium text-[#1D1D1F]">弱点復習キュー</div>
+                <div className="truncate text-[11px] text-[#8E8E93]">
+                  {activeWeak.length > 0 ? activeWeak[0].title : '未卒業なし'}
                 </div>
-                <p className="mt-0.5 truncate text-xs text-[#6E6E73]">
-                  {activeWeak.length > 0 ? activeWeak[0].title : '未卒業なし・典型3問を追加可'}
-                </p>
               </div>
             </div>
-            <ChevronRightIcon className="h-4 w-4 shrink-0 text-[#6E6E73] group-hover:text-[#007AFF]" />
+            <div className="flex shrink-0 items-center gap-1 text-[#8E8E93]">
+              <span className="font-mono text-xs tabular-nums">{activeWeak.length}件</span>
+              <ChevronRightIcon className="h-4 w-4 text-[#C7C7CC]" />
+            </div>
           </button>
 
-          {/* 直近の演習（前回開いた演習へ1タップ直行） */}
-          <div className="flex flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3.5">
-            <button
-              type="button"
-              onClick={() => onNavigateModule(lastPracticeModule)}
-              className="group flex items-center justify-between gap-3 text-left"
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F5F5F7] text-[#007AFF]">
-                  <ModuleNavIcon id={lastPracticeModule} className="h-5 w-5" />
+          {/* 直近の演習 */}
+          <button
+            type="button"
+            onClick={() => onNavigateModule(lastPracticeModule)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-black/[0.02] active:bg-black/[0.05]"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <ModuleNavIcon
+                id={lastPracticeModule}
+                className="h-[19px] w-[19px] shrink-0 text-[#007AFF]"
+              />
+              <div className="min-w-0">
+                <div className="text-[13.5px] font-medium text-[#1D1D1F]">
+                  直近：{practiceMeta.title}
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-[#1D1D1F]">
-                      直近：{practiceMeta.title}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-[#6E6E73]">
-                    {lastPracticeModule === 'sql'
-                      ? `SQLクリア ${store.state.solvedSqlDrills.length}/${SQL_DRILLS.length}問`
-                      : lastPracticeModule === 'cbt'
-                        ? `記述下書き ${cbtDraftCount}問保存済`
-                        : practiceMeta.subtitle}
-                  </p>
+                <div className="truncate text-[11px] text-[#8E8E93]">
+                  {lastPracticeModule === 'sql'
+                    ? `SQLクリア ${store.state.solvedSqlDrills.length}/${SQL_DRILLS.length}問`
+                    : lastPracticeModule === 'cbt'
+                      ? `記述下書き ${cbtDraftCount}問`
+                      : practiceMeta.subtitle}
                 </div>
               </div>
-              <ChevronRightIcon className="h-4 w-4 shrink-0 text-[#6E6E73] group-hover:text-[#007AFF]" />
-            </button>
-
-            {/* 図解 / SQL / CBT への1タップ切替チップ */}
-            <div className="flex items-center gap-1.5 border-t border-slate-100 pt-2">
-              {(['lab', 'sql', 'cbt'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => onNavigateModule(m)}
-                  className={`flex-1 rounded-md py-1 text-[11px] font-semibold transition ${
-                    m === lastPracticeModule
-                      ? 'bg-[#007AFF]/10 text-[#007AFF]'
-                      : 'bg-[#F5F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
-                  }`}
-                >
-                  {PRACTICE_INFO[m].title}
-                </button>
-              ))}
             </div>
-          </div>
+            <ChevronRightIcon className="h-4 w-4 shrink-0 text-[#C7C7CC]" />
+          </button>
 
-          {/* 200語フラッシュカード */}
+          {/* 重要語句200 */}
           <button
             type="button"
             onClick={() => onNavigateModule('cards')}
-            className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3.5 text-left hover:border-[#007AFF]/50 transition"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-black/[0.02] active:bg-black/[0.05]"
           >
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F5F5F7] text-[#007AFF]">
-                <ModuleNavIcon id="cards" className="h-5 w-5" />
-              </div>
+            <div className="flex min-w-0 items-center gap-3">
+              <ModuleNavIcon id="cards" className="h-[19px] w-[19px] shrink-0 text-[#007AFF]" />
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-[#1D1D1F]">200語カード</span>
-                  <span className="font-mono text-xs font-semibold tabular-nums text-[#6E6E73]">
-                    {masteredCards}/{FLASHCARDS_200.length}
-                  </span>
+                <div className="text-[13.5px] font-medium text-[#1D1D1F]">重要語句200</div>
+                <div className="truncate text-[11px] text-[#8E8E93]">
+                  要復習 <span className="font-mono tabular-nums">{reviewCards}</span>語
                 </div>
-                <p className="mt-0.5 truncate text-xs text-[#6E6E73]">
-                  要復習{' '}
-                  <span className="font-mono tabular-nums">{reviewCards}</span>語 ／ 隙間時間に1周
-                </p>
               </div>
             </div>
-            <ChevronRightIcon className="h-4 w-4 shrink-0 text-[#6E6E73] group-hover:text-[#007AFF]" />
+            <div className="flex shrink-0 items-center gap-1 text-[#8E8E93]">
+              <span className="font-mono text-xs tabular-nums">
+                {masteredCards}/{FLASHCARDS_200.length}
+              </span>
+              <ChevronRightIcon className="h-4 w-4 text-[#C7C7CC]" />
+            </div>
           </button>
         </div>
       </div>
 
-      {/* ③ コンパクトな週切替カレンダー（折りたたみ式・省スペース） */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div className="flex items-center justify-between gap-2 px-4 py-2.5">
+      {/* ③ コンパクト週切替カレンダー（枠なしリスト行＋開閉式） */}
+      <div className="ios-group overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
           <button
             type="button"
             onClick={() => setCalendarOpen((v) => !v)}
-            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            className="flex min-w-0 flex-1 items-center gap-2 text-left active:opacity-60"
           >
             <ChevronDownIcon
-              className={`h-4 w-4 shrink-0 text-[#6E6E73] transition-transform ${
+              className={`h-4 w-4 shrink-0 text-[#8E8E93] transition-transform ${
                 calendarOpen ? 'rotate-180' : ''
               }`}
             />
-            <span className="font-mono text-xs font-bold tabular-nums text-[#1D1D1F]">
+            <span className="font-mono text-[13px] font-semibold tabular-nums text-[#1D1D1F]">
               {activeYear}年{activeMonthNum}月 カレンダー
             </span>
-            <span className="truncate text-xs text-[#6E6E73]">
-              （週をタップして切替）
+            <span className="text-[11px] text-[#8E8E93]">
+              {calendarOpen ? '閉じる' : '週を切替'}
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigateModule('roadmap')}
-            className="shrink-0 text-xs font-semibold text-[#007AFF] hover:underline"
+            className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-[#007AFF] active:opacity-50"
           >
-            全5ヶ月を開く →
+            <span>全5ヶ月</span>
+            <ChevronRightIcon className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {calendarOpen && (
-          <div className="border-t border-slate-200 p-3">
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <div className="grid grid-cols-8 border-b border-slate-200 bg-[#F5F5F7] py-1.5 text-center text-[10px] font-semibold text-[#6E6E73]">
-                <div>週</div>
-                {WEEKDAY_SHORT.map((d) => (
-                  <div key={d}>{d}</div>
-                ))}
-              </div>
-              <div className="divide-y divide-slate-100">
-                {miniCalRows.map((row) => {
-                  const rw = row.roadmapWeek;
-                  const isSel = rw !== null && rw.weekNumber === activeWeek.weekNumber;
-                  return (
+          <div className="border-t border-black/[0.07]">
+            <div className="grid grid-cols-8 border-b border-black/[0.06] bg-[#F9F9FB] py-1.5 text-center text-[10px] font-semibold text-[#8E8E93]">
+              <div>週</div>
+              {WEEKDAY_SHORT.map((d) => (
+                <div key={d}>{d}</div>
+              ))}
+            </div>
+            <div className="divide-y divide-black/[0.05]">
+              {miniCalRows.map((row) => {
+                const rw = row.roadmapWeek;
+                const isSel = rw !== null && rw.weekNumber === activeWeek.weekNumber;
+                return (
+                  <button
+                    key={row.mondayStr}
+                    type="button"
+                    disabled={!rw}
+                    onClick={() => {
+                      if (!rw) return;
+                      const idx = ROADMAP_WEEKS.findIndex(
+                        (x) => x.weekNumber === rw.weekNumber
+                      );
+                      if (idx >= 0) setSelectedWeekIdx(idx);
+                    }}
+                    className={`grid w-full grid-cols-8 items-center py-2 text-center font-mono text-[11px] tabular-nums transition ${
+                      !rw ? 'opacity-35 cursor-default' : 'active:bg-black/[0.06]'
+                    } ${
+                      isSel
+                        ? 'bg-[#007AFF] font-bold text-white'
+                        : 'text-[#1D1D1F] hover:bg-black/[0.025]'
+                    }`}
+                  >
                     <div
-                      key={row.mondayStr}
-                      onClick={() => {
-                        if (!rw) return;
-                        const idx = ROADMAP_WEEKS.findIndex(
-                          (x) => x.weekNumber === rw.weekNumber
-                        );
-                        if (idx >= 0) setSelectedWeekIdx(idx);
-                      }}
-                      className={`grid grid-cols-8 items-center py-1.5 text-center font-mono text-[11px] tabular-nums transition ${
-                        rw ? 'cursor-pointer' : 'opacity-35'
-                      } ${
-                        isSel
-                          ? 'bg-[#007AFF] font-bold text-white'
-                          : 'text-[#1D1D1F] hover:bg-[#F5F5F7]'
+                      className={`text-[10px] ${
+                        isSel ? 'text-white' : 'font-semibold text-[#007AFF]'
                       }`}
                     >
-                      <div className={`text-[10px] ${isSel ? 'text-white/85' : 'text-[#6E6E73]'}`}>
-                        {rw ? `W${String(rw.weekNumber).padStart(2, '0')}` : '—'}
-                      </div>
-                      {row.days.map((d) => {
-                        const isToday = d.dateStr === todayStr;
-                        return (
-                          <div key={d.dateStr} className="flex justify-center">
-                            <span
-                              className={`flex h-5 w-5 items-center justify-center rounded-full ${
-                                isToday
-                                  ? isSel
-                                    ? 'bg-white font-bold text-[#007AFF]'
-                                    : 'bg-[#007AFF] font-bold text-white'
-                                  : !d.inMonth && !isSel
-                                    ? 'text-slate-300'
-                                    : ''
-                              }`}
-                            >
-                              {d.dayNum}
-                            </span>
-                          </div>
-                        );
-                      })}
+                      {rw ? `W${String(rw.weekNumber).padStart(2, '0')}` : '—'}
                     </div>
-                  );
-                })}
-              </div>
+                    {row.days.map((d) => {
+                      const isToday = d.dateStr === todayStr;
+                      return (
+                        <div key={d.dateStr} className="flex justify-center">
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full ${
+                              isToday
+                                ? isSel
+                                  ? 'bg-white font-bold text-[#007AFF]'
+                                  : 'bg-[#007AFF] font-bold text-white'
+                                : !d.inMonth && !isSel
+                                  ? 'text-[#C7C7CC]'
+                                  : ''
+                            }`}
+                          >
+                            {d.dayNum}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

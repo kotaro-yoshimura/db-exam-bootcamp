@@ -200,19 +200,21 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
   }, [mode, activeIdx, rows, drawWidth, isCompact]);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+    <div className="ios-group p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-[#1D1D1F]">ウィンドウ関数フレーム可視化</span>
-          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
+          <div className="inline-flex rounded-[8px] bg-black/[0.06] p-[2px]">
             <button
               type="button"
               onClick={() => {
                 setMode('moving-avg');
                 setActiveIdx(0);
               }}
-              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
-                mode === 'moving-avg' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`rounded-[6.5px] px-2.5 py-1 text-[11px] font-semibold transition ${
+                mode === 'moving-avg'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               R7秋: 移動平均(ROWS)
@@ -223,8 +225,10 @@ export const WindowFrameCanvas: React.FC<Props> = ({ preset = 'moving-avg' }) =>
                 setMode('rank-compare');
                 setActiveIdx(0);
               }}
-              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
-                mode === 'rank-compare' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`rounded-[6.5px] px-2.5 py-1 text-[11px] font-semibold transition ${
+                mode === 'rank-compare'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               R6秋: RANK vs DENSE_RANK

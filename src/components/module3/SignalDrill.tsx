@@ -59,7 +59,7 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
   const perfect = checked && hitCount === trueSignals.length && wrongCount === 0;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+    <div className="ios-group p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <div>
           <div className="text-xs font-bold text-[#1D1D1F]">本文シグナル発掘ドリル</div>
@@ -71,34 +71,44 @@ export const SignalDrill: React.FC<Props> = ({ exam, store }) => {
       </div>
 
       {/* タップ可能な本文エリア */}
-      <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-4 leading-8 text-sm">
-        {segments.map((seg) => {
-          const picked = selectedIds.includes(seg.id);
-          let style = 'text-[#1D1D1F] hover:bg-slate-200/70 border-transparent';
+      <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-4 space-y-2.5">
+        {!checked && (
+          <div className="text-[11px] font-medium text-[#007AFF]">
+            点線枠の各フレーズをタップして、主キー・多重度の根拠となる箇所を選んでください
+          </div>
+        )}
+        <div className="leading-9 text-sm">
+          {segments.map((seg) => {
+            const picked = selectedIds.includes(seg.id);
+            let style =
+              'border-dashed border-slate-300 bg-white text-[#1D1D1F] shadow-[0_1px_1px_rgba(0,0,0,0.03)] hover:border-[#007AFF] active:scale-95';
 
-          if (!checked && picked) {
-            style = 'bg-sky-50 text-[#007AFF] border-[#007AFF] font-bold';
-          } else if (checked) {
-            if (seg.isSignal && picked) {
-              style = 'bg-emerald-50 text-emerald-700 border-emerald-600 font-bold';
-            } else if (seg.isSignal && !picked) {
-              style = 'bg-amber-50 text-amber-800 border-amber-500 font-bold';
-            } else if (!seg.isSignal && picked) {
-              style = 'bg-red-50 text-red-700 border-red-500 line-through';
+            if (!checked && picked) {
+              style = 'border-solid border-[#007AFF] bg-sky-50 text-[#007AFF] font-bold shadow-xs';
+            } else if (checked) {
+              if (seg.isSignal && picked) {
+                style = 'border-solid border-emerald-600 bg-emerald-50 text-emerald-700 font-bold';
+              } else if (seg.isSignal && !picked) {
+                style = 'border-solid border-amber-500 bg-amber-50 text-amber-800 font-bold';
+              } else if (!seg.isSignal && picked) {
+                style = 'border-solid border-red-500 bg-red-50 text-red-700 line-through';
+              } else {
+                style = 'border-transparent bg-transparent text-[#6E6E73]';
+              }
             }
-          }
 
-          return (
-            <button
-              key={seg.id}
-              type="button"
-              onClick={() => toggleSegment(seg.id)}
-              className={`mr-1 mb-1 inline rounded-md border px-1.5 py-0.5 text-left transition ${style}`}
-            >
-              {seg.text}
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={seg.id}
+                type="button"
+                onClick={() => toggleSegment(seg.id)}
+                className={`mr-1.5 mb-1.5 inline rounded-md border px-2 py-0.5 text-left transition ${style}`}
+              >
+                {seg.text}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -658,12 +658,14 @@ export const SqlTxSim: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* サブタブ */}
-      <div className="inline-flex flex-wrap rounded-lg bg-[#E5E5EA]/80 p-0.5">
+      <div className="inline-flex flex-wrap rounded-[8px] bg-black/[0.06] p-[2px]">
         <button
           type="button"
           onClick={() => setSubTab('window')}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-            subTab === 'window' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+          className={`rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+            subTab === 'window'
+              ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+              : 'text-[#6E6E73]'
           }`}
         >
           ウィンドウ関数スライサー
@@ -671,8 +673,10 @@ export const SqlTxSim: React.FC = () => {
         <button
           type="button"
           onClick={() => setSubTab('recursive')}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-            subTab === 'recursive' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+          className={`rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+            subTab === 'recursive'
+              ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+              : 'text-[#6E6E73]'
           }`}
         >
           再帰SQL (WITH RECURSIVE)
@@ -680,8 +684,10 @@ export const SqlTxSim: React.FC = () => {
         <button
           type="button"
           onClick={() => setSubTab('tx')}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-            subTab === 'tx' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+          className={`rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+            subTab === 'tx'
+              ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+              : 'text-[#6E6E73]'
           }`}
         >
           排他制御・デッドロック・2PC vs 補償TX
@@ -689,7 +695,7 @@ export const SqlTxSim: React.FC = () => {
       </div>
 
       {/* コントロールパネル */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+      <div className="ios-group p-4 space-y-4">
         {subTab === 'window' && (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
             <div>

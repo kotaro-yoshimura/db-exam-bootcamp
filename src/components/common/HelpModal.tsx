@@ -86,31 +86,31 @@ export const HelpModal: React.FC<Props> = ({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl"
+        className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[12px] bg-[#F2F2F7] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 固定ヘッダー ＆ セグメント切替 */}
-        <div className="shrink-0 space-y-3 border-b border-slate-200 bg-white px-5 pt-4 pb-3">
+        <div className="shrink-0 space-y-3 border-b border-black/[0.08] bg-white px-5 pt-4 pb-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-bold text-[#1D1D1F]">使い方・運用マニュアル</h3>
-              <p className="mt-0.5 text-xs text-[#6E6E73]">
+              <p className="mt-0.5 text-xs text-[#8E8E93]">
                 令和8年度後期 CBT 合格に向けた学習手順と機能ガイド
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
+              className="text-sm font-semibold text-[#007AFF] active:opacity-50"
             >
-              閉じる
+              完了
             </button>
           </div>
 
           <div
             role="tablist"
             aria-label="マニュアルセクション切替"
-            className="grid grid-cols-3 gap-1 rounded-lg bg-[#E5E5EA]/90 p-1"
+            className="grid grid-cols-3 gap-0.5 rounded-[8px] bg-black/[0.07] p-[2px]"
           >
             {(
               [
@@ -127,8 +127,10 @@ export const HelpModal: React.FC<Props> = ({
                   role="tab"
                   aria-selected={active}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-md py-1.5 text-xs font-semibold transition ${
-                    active ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73] hover:text-[#1D1D1F]'
+                  className={`rounded-[6.5px] py-1.5 text-xs font-semibold transition ${
+                    active
+                      ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                      : 'text-[#6E6E73] hover:text-[#1D1D1F]'
                   }`}
                 >
                   {tab.label}

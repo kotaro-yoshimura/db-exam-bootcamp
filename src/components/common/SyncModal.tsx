@@ -133,22 +133,22 @@ export const SyncModal: React.FC<Props> = ({ open, onClose, store, pwaStatus }) 
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border border-slate-200 bg-white p-5 shadow-xl space-y-4"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[12px] bg-[#F2F2F7] p-5 shadow-2xl space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center justify-between gap-3 pb-1">
           <h3 className="text-base font-bold text-[#1D1D1F]">データ同期 ＆ バックアップ</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
+            className="text-sm font-semibold text-[#007AFF] active:opacity-50"
           >
-            閉じる
+            完了
           </button>
         </div>
 
         {/* 現在の保存サマリー */}
-        <div className="grid grid-cols-3 divide-x divide-slate-200 rounded-lg border border-slate-200 bg-[#F5F5F7] py-2.5 text-center text-xs">
+        <div className="ios-group grid grid-cols-3 divide-x divide-black/[0.07] py-2.5 text-center text-xs">
           <div>
             <div className="text-[11px] text-[#6E6E73]">行程完了</div>
             <div className="mt-0.5 font-mono text-sm font-bold tabular-nums text-[#1D1D1F]">
@@ -182,7 +182,7 @@ export const SyncModal: React.FC<Props> = ({ open, onClose, store, pwaStatus }) 
         )}
 
         {/* 1. GitHub 非公開Gist 無料自動同期 */}
-        <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-3">
+        <div className="ios-group p-3.5 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-bold text-[#1D1D1F]">
@@ -382,7 +382,7 @@ export const SyncModal: React.FC<Props> = ({ open, onClose, store, pwaStatus }) 
         </div>
 
         {/* 2. 手動Base64同期（オフライン・アカウント不要） */}
-        <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-2.5">
+        <div className="ios-group p-3.5 space-y-2.5">
           <div className="text-xs font-bold text-[#1D1D1F]">
             2. 手動3秒同期（Base64圧縮コード・アカウント不要）
           </div>
@@ -433,7 +433,7 @@ export const SyncModal: React.FC<Props> = ({ open, onClose, store, pwaStatus }) 
         </div>
 
         {/* 3. JSONファイルのエクスポート / インポート */}
-        <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 space-y-2">
+        <div className="ios-group p-3.5 space-y-2">
           <div className="text-xs font-bold text-[#1D1D1F]">
             3. JSONファイルによるバックアップ・復元
           </div>
@@ -464,7 +464,7 @@ export const SyncModal: React.FC<Props> = ({ open, onClose, store, pwaStatus }) 
 
         {/* 4. アプリモード・オフラインPWA状態 */}
         {pwaStatus && (
-          <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-2">
+          <div className="ios-group p-3.5 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="text-xs font-bold text-[#1D1D1F]">
                 4. アプリモード ＆ オフラインPWA状態

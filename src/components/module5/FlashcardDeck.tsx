@@ -71,24 +71,89 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
 
   return (
     <div className="space-y-4">
+      {/* 何から始めるか迷わないワンタップ推奨フィルタ */}
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <span className="text-[11px] font-medium text-[#8E8E93]">おすすめ：</span>
+        <button
+          type="button"
+          onClick={() => {
+            setChapterFilter(0);
+            setStatusFilter('unseen');
+            setImportanceFilter('A');
+            setSearchQuery('');
+            setViewMode('deck');
+            setCardIdx(0);
+            setFlipped(false);
+          }}
+          className={`font-semibold active:opacity-50 transition ${
+            statusFilter === 'unseen' && importanceFilter === 'A'
+              ? 'text-[#007AFF] underline underline-offset-4'
+              : 'text-[#007AFF]'
+          }`}
+        >
+          未学習・重要度A
+        </button>
+        <span className="text-black/15">|</span>
+        <button
+          type="button"
+          onClick={() => {
+            setChapterFilter(0);
+            setStatusFilter('review');
+            setImportanceFilter('all');
+            setSearchQuery('');
+            setViewMode('deck');
+            setCardIdx(0);
+            setFlipped(false);
+          }}
+          className={`font-semibold active:opacity-50 transition ${
+            statusFilter === 'review'
+              ? 'text-[#007AFF] underline underline-offset-4'
+              : 'text-[#1D1D1F]'
+          }`}
+        >
+          要復習（<span className="font-mono tabular-nums">{reviewCount}</span>語）
+        </button>
+        {(chapterFilter !== 0 || statusFilter !== 'all' || importanceFilter !== 'all' || searchQuery) && (
+          <>
+            <span className="text-black/15">|</span>
+            <button
+              type="button"
+              onClick={() => {
+                setChapterFilter(0);
+                setStatusFilter('all');
+                setImportanceFilter('all');
+                setSearchQuery('');
+                setCardIdx(0);
+                setFlipped(false);
+              }}
+              className="font-medium text-[#8E8E93] hover:text-[#1D1D1F]"
+            >
+              リセット
+            </button>
+          </>
+        )}
+      </div>
+
       {/* サマリー＆フィルタ */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+      <div className="ios-group p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-3 font-mono text-xs tabular-nums">
             <span className="font-bold text-[#1D1D1F]">全収録 {FLASHCARDS_200.length}語</span>
             <span className="text-[#1D1D1F]">習得済 {masteredCount}</span>
-            <span className="text-[#6E6E73]">要復習 {reviewCount}</span>
-            <span className="text-[#6E6E73]">
+            <span className="text-[#8E8E93]">要復習 {reviewCount}</span>
+            <span className="text-[#8E8E93]">
               未学習 {FLASHCARDS_200.length - masteredCount - reviewCount}
             </span>
           </div>
 
-          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
+          <div className="inline-flex rounded-[8px] bg-black/[0.06] p-[2px]">
             <button
               type="button"
               onClick={() => setViewMode('deck')}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
-                viewMode === 'deck' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`rounded-[6.5px] px-3 py-1 text-xs font-semibold transition ${
+                viewMode === 'deck'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               単語カード
@@ -96,8 +161,10 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
-                viewMode === 'list' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`rounded-[6.5px] px-3 py-1 text-xs font-semibold transition ${
+                viewMode === 'list'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               一覧表 (<span className="font-mono tabular-nums">{filteredCards.length}</span>)
@@ -198,19 +265,27 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
             </div>
 
             <div
-              className="card-perspective cursor-pointer select-none"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFlipped((f) => !f);
+                }
+              }}
+              className="card-perspective cursor-pointer select-none active:scale-[0.99] transition-transform"
               onClick={() => setFlipped((f) => !f)}
             >
               <div
                 className={`card-inner relative min-h-[280px] w-full ${flipped ? 'is-flipped' : ''}`}
               >
                 {/* 表面 */}
-                <div className="card-face absolute inset-0 flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-6 shadow-xs">
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
-                    <span className="text-xs font-semibold text-[#6E6E73]">
+                <div className="card-face ios-group absolute inset-0 flex flex-col justify-between p-6 shadow-[0_2px_10px_rgba(0,0,0,0.06)]">
+                  <div className="flex items-center justify-between gap-2 border-b border-black/[0.06] pb-2.5">
+                    <span className="text-xs font-medium text-[#8E8E93]">
                       {currentCard.chapterTitle}
                     </span>
-                    <span className="rounded-md border border-slate-200 bg-[#F5F5F7] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#1D1D1F]">
+                    <span className="font-mono text-[11px] font-semibold text-[#6E6E73]">
                       重要度 {currentCard.importance}
                     </span>
                   </div>
@@ -235,7 +310,9 @@ export const FlashcardDeck: React.FC<Props> = ({ store }) => {
                             : '未学習'}
                       </strong>
                     </span>
-                    <span className="font-semibold text-[#007AFF]">タップして解説を見る</span>
+                    <span className="rounded-md border border-[#007AFF]/30 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-[#007AFF]">
+                      タップして答えを見る ↻
+                    </span>
                   </div>
                 </div>
 

@@ -66,7 +66,7 @@ export const App: React.FC = () => {
   const daysLeft = getDaysLeftToExam();
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] text-[#1D1D1F]">
+    <div className="min-h-screen bg-[#F2F2F7] text-[#1D1D1F]">
       {/* iPad / Mac幅（md以上）：左固定サイドバーのみ */}
       <SidebarNav
         activeModule={activeModule}

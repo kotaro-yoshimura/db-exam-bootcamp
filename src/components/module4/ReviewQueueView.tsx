@@ -191,13 +191,11 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
 
   return (
     <section className="space-y-4">
-      <div className="border-b border-slate-200 pb-3">
+      <div className="pb-1">
         <div className="flex flex-wrap items-baseline gap-2.5">
-          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
-            弱点復習キュー
-          </h2>
-          <span className="font-mono text-xs font-semibold tabular-nums text-[#6E6E73]">
-            未卒業 {activeItems.length}件 ／ 卒業済 {graduatedItems.length}件
+          <h2 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">弱点復習キュー</h2>
+          <span className="font-mono text-xs font-medium tabular-nums text-[#8E8E93]">
+            未卒業 {activeItems.length}件 · 卒業済 {graduatedItems.length}件
           </span>
         </div>
         <p className="mt-0.5 text-xs text-[#6E6E73]">
@@ -205,14 +203,40 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
         </p>
       </div>
 
+      {/* 次に復習する1問ガイド（未卒業あり＆演習未開始時） */}
+      {!activeDrill && activeItems.length > 0 && (
+        <div className="ios-group flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="font-semibold text-[#007AFF]">次に復習する1問</span>
+              <span className="font-mono tabular-nums text-[#8E8E93]">
+                {activeItems[0].year} · 連続 {activeItems[0].consecutivePerfect}/2
+              </span>
+            </div>
+            <div className="mt-0.5 truncate text-sm font-bold text-[#1D1D1F]">
+              {activeItems[0].title}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => startDrill(activeItems[0])}
+            className="shrink-0 rounded-[8px] bg-[#007AFF] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0066D6] active:opacity-80 transition"
+          >
+            今すぐ復習を開始 →
+          </button>
+        </div>
+      )}
+
       {/* フィルタ＆お試し投入 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
+        <div className="inline-flex rounded-[8px] bg-black/[0.06] p-[2px]">
           <button
             type="button"
             onClick={() => setFilter('active')}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-              filter === 'active' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+            className={`rounded-[6.5px] px-3.5 py-1.5 text-xs font-semibold transition ${
+              filter === 'active'
+                ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                : 'text-[#6E6E73]'
             }`}
           >
             要復習 (<span className="font-mono tabular-nums">{activeItems.length}</span>)
@@ -220,8 +244,10 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
           <button
             type="button"
             onClick={() => setFilter('graduated')}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-              filter === 'graduated' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+            className={`rounded-[6.5px] px-3.5 py-1.5 text-xs font-semibold transition ${
+              filter === 'graduated'
+                ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                : 'text-[#6E6E73]'
             }`}
           >
             卒業済 (<span className="font-mono tabular-nums">{graduatedItems.length}</span>)
@@ -231,15 +257,15 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
         <button
           type="button"
           onClick={seedTypicalWeakPoints}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
+          className="text-xs font-medium text-[#007AFF] active:opacity-50 hover:underline"
         >
-          + 典型ひっかけ3問をキューへ投入
+          + 典型ひっかけ3問を投入
         </button>
       </div>
 
       {/* 反復ドリル実行パネル */}
       {activeDrill && (
-        <div className="rounded-lg border-2 border-[#007AFF] bg-white p-4 sm:p-5 space-y-4">
+        <div className="ios-group ring-2 ring-[#007AFF] p-4 sm:p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
             <div className="flex items-center gap-2">
               <span className="rounded-md bg-[#007AFF] px-2 py-0.5 text-[11px] font-semibold text-white">
@@ -282,10 +308,16 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
                           )
                         )
                       }
-                      className="flex flex-col items-center rounded-lg border border-slate-200 bg-white px-3 py-2 hover:border-[#007AFF]"
+                      className={`flex flex-col items-center rounded-lg border border-b-2 px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-95 transition ${
+                        chosen !== 'none'
+                          ? 'border-[#007AFF]/60 bg-sky-50/40 hover:border-[#007AFF]'
+                          : 'border-slate-300 bg-white hover:border-[#007AFF]'
+                      }`}
                     >
                       <span className={`text-sm ${KEY_ROLE_CLASS[chosen]}`}>{attr.name}</span>
-                      <span className="mt-1 text-[10px] text-[#6E6E73]">{KEY_ROLE_LABEL[chosen]}</span>
+                      <span className="mt-1 text-[10px] font-medium text-[#6E6E73]">
+                        {KEY_ROLE_LABEL[chosen]} ↻
+                      </span>
                     </button>
                   );
                 })}
@@ -318,10 +350,10 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
                           prev.includes(seg.id) ? prev.filter((x) => x !== seg.id) : [...prev, seg.id]
                         )
                       }
-                      className={`mr-1 mb-1 inline rounded-md border px-1.5 py-0.5 text-left ${
+                      className={`mr-1.5 mb-1.5 inline rounded-md border px-2 py-0.5 text-left active:scale-95 transition ${
                         picked
-                          ? 'border-[#007AFF] bg-sky-50 font-bold text-[#007AFF]'
-                          : 'border-transparent text-[#1D1D1F] hover:bg-slate-200/70'
+                          ? 'border-solid border-[#007AFF] bg-sky-50 font-bold text-[#007AFF] shadow-xs'
+                          : 'border-dashed border-slate-300 bg-white text-[#1D1D1F] shadow-[0_1px_1px_rgba(0,0,0,0.03)] hover:border-[#007AFF]'
                       }`}
                     >
                       {seg.text}
@@ -445,6 +477,22 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
                   {activeDrill.payload.explanation}
                 </p>
               )}
+              {feedback.ok &&
+                (() => {
+                  const nextWeak = activeItems.find((x) => x.id !== activeDrill.id);
+                  if (!nextWeak) return null;
+                  return (
+                    <div className="mt-2.5 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => startDrill(nextWeak)}
+                        className="rounded-lg bg-[#007AFF] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#0066D6] active:scale-95 transition"
+                      >
+                        次の弱点アイテムへ進む →
+                      </button>
+                    </div>
+                  );
+                })()}
             </div>
           )}
         </div>
@@ -452,7 +500,7 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
 
       {/* キュー一覧 */}
       {displayItems.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center space-y-1.5">
+        <div className="ios-group p-8 text-center space-y-1.5">
           <div className="text-sm font-bold text-[#1D1D1F]">
             {filter === 'active'
               ? '現在、未卒業の弱点アイテムはありません。'
@@ -463,11 +511,11 @@ export const ReviewQueueView: React.FC<Props> = ({ store }) => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="ios-group divide-y divide-black/[0.07] overflow-hidden md:grid md:grid-cols-2 md:divide-y-0 md:gap-3 md:bg-transparent md:shadow-none">
           {displayItems.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4"
+              className="flex flex-col justify-between gap-3 bg-white p-4 md:rounded-[10px] md:shadow-[0_0.5px_0_rgba(0,0,0,0.04)]"
             >
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">

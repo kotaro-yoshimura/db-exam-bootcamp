@@ -220,18 +220,16 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
 
   return (
     <section className="space-y-4">
-      {/* ヘッダ ＆ CBTタイマー ＆ 分割比率 */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-200 pb-3">
+      {/* ヘッダ ＆ CBTタイマー ＆ 分割比率（枠ノイズ排除） */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-1">
         <div className="flex items-baseline gap-2.5">
-          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
-            CBT演習
-          </h2>
-          <span className="font-mono text-xs tabular-nums text-[#6E6E73]">R7秋–H28春</span>
+          <h2 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">CBT演習</h2>
+          <span className="font-mono text-xs tabular-nums text-[#8E8E93]">R7秋–H28春</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
-            <span className="text-[11px] font-medium text-[#6E6E73]">残時間</span>
+          <div className="ios-group flex items-center gap-2.5 px-3 py-1.5">
+            <span className="text-[11px] font-medium text-[#8E8E93]">残時間</span>
             <span
               className={`font-mono text-sm font-bold tabular-nums ${
                 remainingSec < 300 ? 'text-red-600' : 'text-[#1D1D1F]'
@@ -242,7 +240,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             <button
               type="button"
               onClick={() => setTimerRunning((r) => !r)}
-              className="rounded-md bg-[#007AFF] px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-[#0066D6]"
+              className="rounded-[6px] bg-[#007AFF] px-2.5 py-0.5 text-[11px] font-semibold text-white active:opacity-80"
             >
               {timerRunning ? '停止' : '開始'}
             </button>
@@ -252,20 +250,22 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                 setTimerRunning(false);
                 setRemainingSec(exam.timeLimitMin * 60);
               }}
-              className="rounded-md border border-slate-200 bg-[#F5F5F7] px-2 py-0.5 text-[11px] text-[#6E6E73] hover:text-[#1D1D1F]"
+              className="text-[11px] font-medium text-[#6E6E73] hover:text-[#1D1D1F] active:opacity-50"
             >
               リセット
             </button>
           </div>
 
-          <div className="hidden md:inline-flex items-center rounded-lg bg-[#E5E5EA]/80 p-0.5 text-[11px]">
+          <div className="hidden md:inline-flex items-center rounded-[8px] bg-black/[0.06] p-[2px] text-[11px]">
             {(['50-50', '60-40', '40-60'] as const).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setSplitRatio(r)}
-                className={`rounded-md px-2 py-1 font-mono font-semibold tabular-nums transition ${
-                  splitRatio === r ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+                className={`rounded-[6.5px] px-2 py-1 font-mono font-semibold tabular-nums transition ${
+                  splitRatio === r
+                    ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                    : 'text-[#6E6E73]'
                 }`}
               >
                 {r}
@@ -282,10 +282,10 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             key={ex.id}
             type="button"
             onClick={() => setExamIdx(idx)}
-            className={`shrink-0 rounded-lg border px-3 py-2 text-left transition ${
+            className={`shrink-0 rounded-[10px] px-3 py-2 text-left transition active:opacity-75 ${
               idx === examIdx
-                ? 'border-[#007AFF] bg-[#007AFF] text-white'
-                : 'border-slate-200 bg-white text-[#1D1D1F] hover:border-slate-300'
+                ? 'bg-[#007AFF] text-white'
+                : 'ios-group text-[#1D1D1F] hover:bg-white/90'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -296,7 +296,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
               >
                 {ex.year}
               </span>
-              <span className={`text-[10px] ${idx === examIdx ? 'text-white/80' : 'text-[#6E6E73]'}`}>
+              <span className={`text-[10px] ${idx === examIdx ? 'text-white/80' : 'text-[#8E8E93]'}`}>
                 {ex.category}
               </span>
             </div>
@@ -306,17 +306,17 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
       </div>
 
       {toastMsg && (
-        <div className="rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2 text-xs font-semibold text-[#1D1D1F]">
+        <div className="rounded-[10px] bg-[#007AFF]/10 px-3.5 py-2 text-xs font-semibold text-[#007AFF]">
           {toastMsg}
         </div>
       )}
 
-      {/* iPhone用スティッキー・セグメントコントロール（md未満のみ） */}
-      <div className="sticky top-12 z-20 -mx-4 border-b border-slate-200/80 bg-[#F5F5F7]/95 px-4 py-2 backdrop-blur-md md:hidden">
+      {/* iPhone用スティッキー・セグメントコントロール（本物iOS質感） */}
+      <div className="sticky top-12 z-20 -mx-4 border-b border-black/[0.06] bg-[#F2F2F7]/95 px-4 py-2 backdrop-blur-md md:hidden">
         <div
           role="tablist"
           aria-label="CBT演習ペイン切替"
-          className="grid grid-cols-3 gap-1 rounded-lg bg-[#E5E5EA]/90 p-1"
+          className="grid grid-cols-3 gap-0.5 rounded-[8px] bg-black/[0.07] p-[2px]"
         >
           {(
             [
@@ -333,9 +333,9 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                 role="tab"
                 aria-selected={active}
                 onClick={() => handleSwitchMobilePane(seg.id)}
-                className={`rounded-md py-1.5 text-xs font-semibold transition ${
+                className={`rounded-[6.5px] py-1.5 text-xs font-semibold transition ${
                   active
-                    ? 'bg-white text-[#1D1D1F] shadow-xs'
+                    ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                     : 'text-[#6E6E73] active:text-[#1D1D1F]'
                 }`}
               >
@@ -346,7 +346,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
         </div>
       </div>
 
-      {/* 左右2ペイン（md以上は左右分割、md未満はセグメント表示） */}
+      {/* 左右2ペイン */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-12 items-start">
         {/* 左ペイン：問題文・業務ルール・手書きオーバーレイ */}
         <div
@@ -354,18 +354,18 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             mobilePane === 'problem' ? 'block' : 'hidden md:block'
           }`}
         >
-          <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#6E6E73]">
+          <div className="ios-group p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#8E8E93]">
               <span className="font-semibold text-[#007AFF]">
-                <span className="font-mono tabular-nums">{exam.year}</span> ・ {exam.section}
+                <span className="font-mono tabular-nums">{exam.year}</span> · {exam.section}
               </span>
               <span className="font-mono tabular-nums">目安 {exam.timeLimitMin}分</span>
             </div>
             <h3 className="text-base font-bold text-[#1D1D1F]">{exam.title}</h3>
             <p className="text-sm text-[#1D1D1F]/90 leading-relaxed">{exam.backgroundText}</p>
 
-            <div className="rounded-lg border border-slate-200 bg-[#F5F5F7] p-3.5 space-y-2">
-              <div className="text-xs font-bold text-[#1D1D1F]">業務ルール・前提条件</div>
+            <div className="rounded-[8px] bg-[#F2F2F7] p-3.5 space-y-2">
+              <div className="text-xs font-semibold text-[#6E6E73]">業務ルール・前提条件</div>
               <ul className="space-y-1.5 text-xs sm:text-sm text-[#1D1D1F]/90 list-disc pl-5 leading-relaxed">
                 {exam.businessRules.map((rule, i) => (
                   <li key={i}>{rule}</li>
@@ -383,12 +383,14 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             mobilePane === 'editor' ? 'block' : 'hidden md:block'
           }`}
         >
-          <div className="inline-flex w-full sm:w-auto rounded-lg bg-[#E5E5EA]/80 p-0.5">
+          <div className="inline-flex w-full sm:w-auto rounded-[8px] bg-black/[0.06] p-[2px]">
             <button
               type="button"
               onClick={() => setRightTab('essay')}
-              className={`flex-1 sm:flex-none rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                rightTab === 'essay' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`flex-1 sm:flex-none rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+                rightTab === 'essay'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               記述 (<span className="font-mono tabular-nums">{exam.essayQuestions.length}</span>)
@@ -396,8 +398,10 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             <button
               type="button"
               onClick={() => setRightTab('schema')}
-              className={`flex-1 sm:flex-none rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                rightTab === 'schema' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`flex-1 sm:flex-none rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+                rightTab === 'schema'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               スキーマ下線
@@ -405,8 +409,10 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
             <button
               type="button"
               onClick={() => setRightTab('signal')}
-              className={`flex-1 sm:flex-none rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                rightTab === 'signal' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`flex-1 sm:flex-none rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+                rightTab === 'signal'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               シグナル発掘
@@ -422,10 +428,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                 const revealed = !!revealedEssays[q.id];
 
                 return (
-                  <div
-                    key={q.id}
-                    className="rounded-lg border border-slate-200 bg-white p-4 space-y-3"
-                  >
+                  <div key={q.id} className="ios-group p-4 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-mono text-xs font-bold tabular-nums text-[#1D1D1F]">
                         {q.label}
@@ -536,7 +539,7 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
           )}
 
           {rightTab === 'schema' && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+            <div className="ios-group p-4 space-y-4">
               <div>
                 <div className="text-xs font-bold text-[#6E6E73]">関係スキーマ下線エディタ</div>
                 <p className="mt-1 text-sm font-medium text-[#1D1D1F]">
@@ -558,17 +561,19 @@ export const CbtTrainer: React.FC<Props> = ({ store }) => {
                         key={attr.name}
                         type="button"
                         onClick={() => handleToggleSchemaRole(idx)}
-                        className={`flex flex-col items-center rounded-lg border px-3 py-2 transition ${
+                        className={`flex flex-col items-center rounded-lg border border-b-2 px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)] active:scale-95 transition ${
                           ok
                             ? 'border-emerald-600 bg-emerald-50'
                             : ng
                               ? 'border-red-500 bg-red-50'
-                              : 'border-slate-200 bg-white hover:border-[#007AFF]'
+                              : chosen !== 'none'
+                                ? 'border-[#007AFF]/60 bg-sky-50/40 hover:border-[#007AFF]'
+                                : 'border-slate-300 bg-white hover:border-[#007AFF]'
                         }`}
                       >
                         <span className={`text-sm ${KEY_ROLE_CLASS[chosen]}`}>{attr.name}</span>
-                        <span className="mt-1 text-[10px] text-[#6E6E73]">
-                          {KEY_ROLE_LABEL[chosen]}
+                        <span className="mt-1 text-[10px] font-medium text-[#6E6E73]">
+                          {KEY_ROLE_LABEL[chosen]} ↻
                         </span>
                       </button>
                     );

@@ -276,8 +276,8 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
 
   return (
     <div className="space-y-4">
-      {/* 進捗サマリーバー（全体 / テキスト通読 / 演習：ニュートラル＋システムブルー統一） */}
-      <div className="grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-y-0 sm:divide-x divide-slate-200 rounded-lg border border-slate-200 bg-white">
+      {/* 進捗サマリーバー（1枚のボーダーレス白シート） */}
+      <div className="ios-group grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-y-0 sm:divide-x divide-black/[0.07] overflow-hidden">
         <div className="p-3.5">
           <div className="flex items-center justify-between text-[11px] text-[#6E6E73]">
             <span>全18週間 総合進捗</span>
@@ -318,12 +318,14 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
       {/* コントロール行 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
+          <div className="inline-flex rounded-[8px] bg-black/[0.06] p-[2px]">
             <button
               type="button"
               onClick={() => setViewMode('calendar')}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                viewMode === 'calendar' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+                viewMode === 'calendar'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               月間カレンダー
@@ -331,15 +333,17 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                viewMode === 'list' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              className={`rounded-[6.5px] px-3 py-1.5 text-xs font-semibold transition ${
+                viewMode === 'list'
+                  ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'text-[#6E6E73]'
               }`}
             >
               全18週一覧
             </button>
           </div>
 
-          <div className="inline-flex rounded-lg bg-[#E5E5EA]/80 p-0.5">
+          <div className="inline-flex rounded-[8px] bg-black/[0.06] p-[2px]">
             {(
               [
                 { id: 'all', label: 'すべて' },
@@ -351,8 +355,10 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                 key={f.id}
                 type="button"
                 onClick={() => setTaskTypeFilter(f.id)}
-                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                  taskTypeFilter === f.id ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+                className={`rounded-[6.5px] px-2.5 py-1 text-xs font-semibold transition ${
+                  taskTypeFilter === f.id
+                    ? 'bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                    : 'text-[#6E6E73]'
                 }`}
               >
                 {f.label}
@@ -365,9 +371,9 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
           <button
             type="button"
             onClick={() => setShowChart((s) => !s)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]"
+            className="text-xs font-medium text-[#007AFF] active:opacity-50 hover:underline"
           >
-            {showChart ? '週別棒グラフを隠す' : '週別棒グラフを表示'}
+            {showChart ? '棒グラフを隠す' : '週別棒グラフ'}
           </button>
         )}
       </div>
@@ -376,7 +382,7 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
       {viewMode === 'calendar' ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-start">
           {/* 左：月間カレンダーグリッド */}
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-7">
+          <div className="ios-group overflow-hidden lg:col-span-7">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-[#F5F5F7]/70 px-4 py-3">
               <div className="flex items-center gap-2">
                 <button
@@ -524,8 +530,17 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
                               {w.theme}
                             </span>
                           </div>
-                          <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-[#1D1D1F]">
-                            {wDone}/{wTotal}
+                          <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] font-bold tabular-nums text-[#1D1D1F]">
+                            <span>
+                              {wDone}/{wTotal}
+                            </span>
+                            <span
+                              className={`font-sans text-[10px] font-semibold ${
+                                isSelected ? 'text-[#007AFF]' : 'text-[#6E6E73]'
+                              }`}
+                            >
+                              {isSelected ? '表示中' : '詳細 ›'}
+                            </span>
                           </span>
                         </div>
                       </div>
@@ -537,7 +552,7 @@ export const RoadmapTracker: React.FC<Props> = ({ store, onNavigateModule }) => 
           </div>
 
           {/* 右：選択週のタスク詳細パネル */}
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white lg:col-span-5">
+          <div className="ios-group overflow-hidden lg:col-span-5">
             <div className="border-b border-slate-200 bg-[#F5F5F7]/70 px-4 py-3 space-y-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">

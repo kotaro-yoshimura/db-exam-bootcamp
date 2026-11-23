@@ -15,12 +15,10 @@ export const RoadmapCalendarView: React.FC<RoadmapPageProps> = ({
   onNavigateModule,
 }) => (
   <section className="space-y-4">
-    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 pb-3">
+    <div className="flex flex-wrap items-baseline justify-between gap-2 pb-1">
       <div className="flex flex-wrap items-baseline gap-2.5">
-        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
-          行程カレンダー
-        </h2>
-        <span className="font-mono text-xs tabular-nums text-[#6E6E73]">
+        <h2 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">行程カレンダー</h2>
+        <span className="font-mono text-xs tabular-nums text-[#8E8E93]">
           2026/11/23 – 2027/03/28（18週間）
         </span>
       </div>
@@ -35,12 +33,10 @@ interface FlashcardsPageProps {
 
 export const Flashcards200View: React.FC<FlashcardsPageProps> = ({ store }) => (
   <section className="space-y-4">
-    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 pb-3">
+    <div className="flex flex-wrap items-baseline justify-between gap-2 pb-1">
       <div className="flex flex-wrap items-baseline gap-2.5">
-        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F]">
-          重要語句200
-        </h2>
-        <span className="text-xs text-[#6E6E73]">合格教本 全9章フラッシュカード</span>
+        <h2 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">重要語句200</h2>
+        <span className="text-xs text-[#8E8E93]">合格教本 全9章フラッシュカード</span>
       </div>
     </div>
     <FlashcardDeck store={store} />
