@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="DB学習ノート" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#f6f6f4" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <title>DBスペシャリスト学習ノート — 令和8年度後期・CBT対策</title>
+    <script>
+      // iPad/iPhone Safari の data: URL（ショートカット起動）では MessageChannel が opaque origin 制限を受けるため
+      // React スケジューラを安全な setTimeout フォールバックへ自動誘導する
+      try {
+        if (typeof location !== 'undefined' && location.protocol === 'data:') {
+          window.MessageChannel = undefined;
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body class="bg-[#f6f6f4] text-[#18181b] antialiased selection:bg-[#1e293b]/15 selection:text-[#18181b]">
+    <div id="root">
+      <div style="padding:40px 20px;text-align:center;color:#52525b;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;">
+        <div style="font-size:15px;font-weight:700;color:#18181b;margin-bottom:8px;">
+          DBスペシャリスト学習ノートを読み込んでいます...
+        </div>
+        <div id="boot-hint" style="font-size:12px;line-height:1.7;max-width:460px;margin:0 auto;">
+          画面が切り替わらない場合、iPadの「ファイル」アプリの簡易プレビュー（QuickLook）でJavaScriptが無効になっています。ショートカット（Safari）またはローカルHTML対応ブラウザから開いてください。
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
